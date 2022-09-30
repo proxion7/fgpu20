@@ -58,6 +58,13 @@ void uvm_va_range_exit(void)
     kmem_cache_destroy_safe(&g_uvm_vma_wrapper_cache);
 }
 
+//fgpu20 {start}
+NvU32 uvm_va_range_get_tgid(uvm_va_range_t *va_range)
+{
+    return va_range->master_tgid;
+}
+//fgpu20 {end}
+
 static NvU64 block_calc_start(uvm_va_range_t *va_range, size_t index)
 {
     NvU64 range_start = UVM_VA_BLOCK_ALIGN_DOWN(va_range->node.start);
@@ -122,6 +129,9 @@ static uvm_va_range_t *uvm_va_range_alloc(uvm_va_space_t *va_space, NvU64 start,
     va_range->va_space = va_space;
     va_range->node.start = start;
     va_range->node.end = end;
+//fgpu20 {start}
+    va_range->master_tgid = task_tgid_nr(current);
+//fgpu20 {end}
 
     // The range is inserted into the VA space tree only at the end of creation,
     // so clear the node so the destroy path knows whether to remove it.

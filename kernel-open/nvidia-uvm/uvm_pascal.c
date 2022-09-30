@@ -26,6 +26,10 @@
 #include "uvm_mem.h"
 #include "uvm_pascal_fault_buffer.h"
 
+//fgpu20 {start}
+#include "nv_uvm_types.h"
+//fgpu20 {end}
+
 static unsigned uvm_force_prefetch_fault_support = 0;
 module_param(uvm_force_prefetch_fault_support, uint, S_IRUGO);
 
@@ -98,4 +102,41 @@ void uvm_hal_pascal_arch_init_properties(uvm_parent_gpu_t *parent_gpu)
     parent_gpu->smc.supported = false;
 
     parent_gpu->plc_supported = false;
+
+//fgpu20 {start}
+#if defined(UVM_MEM_COLORING)
+
+   // During testing, only one color is needed. We just need contiguous phy memory.
+   // For userspace coloring, during allocation we just need contiguous memory.
+   // But during transfer memory, we need to be color aware.
+   // For kernel coloring, everythng is transparent to userspace application and hence
+   // it needs to be color aware.
+#if defined(UVM_TEST_MEM_COLORING)
+
+    gpu->num_allocation_mem_colors = 1;
+    gpu->num_transfer_mem_colors = 1;
+    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
+    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_2M;
+
+#elif defined(UVM_USER_MEM_COLORING)
+
+    gpu->num_allocation_mem_colors = 1;
+    gpu->num_transfer_mem_colors = 2;
+    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
+    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
+
+#else /* Kernel coloring */
+
+    gpu->num_allocation_mem_colors = 2;
+    gpu->num_transfer_mem_colors = 2;
+    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_4K;
+    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
+
+#endif
+
+#else
+    gpu->num_allocation_mem_colors = 0;
+    gpu->num_transfer_mem_colors = 0;
+#endif
+//fgpu20 {end}
 }

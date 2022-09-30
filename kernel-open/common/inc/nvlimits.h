@@ -57,3 +57,10 @@
  * This is the maximum number of heads per GPU.
  */
 #define NV_MAX_HEADS            4
+
+//fgpu20 {start}
+/*
+ * This is the maximum number of memory colors supported in single GPU.
+ */
+#define NV_MAX_MEM_COLORS     128
+//fgpu20 {end}

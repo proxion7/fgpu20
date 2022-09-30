@@ -62,6 +62,34 @@
     typedef NvU32 uvm_page_index_t;
 #endif
 
+//fgpu20 {start}
+    typedef struct
+{
+    DECLARE_BITMAP(bitmap, PAGES_PER_UVM_VA_BLOCK);
+} uvm_page_mask_t;
+
+typedef struct
+{
+    // Start address
+    NvU64 start;
+    NvU32 color;
+
+    // Page offset of the first page in block
+    NvU64 page_offset;
+
+    // Length covered by colored pages between start and end
+    NvU64 length;
+    
+    // Mask for colored pages
+    uvm_page_mask_t page_mask;
+    uvm_va_block_region_t region;
+
+    // Last block start address
+    NvU64 last_block_start;
+    
+} uvm_va_block_colored_region_t;
+//fgpu20 {end}
+
 // Encapsulates a [first, outer) region of pages within a va block
 typedef struct
 {

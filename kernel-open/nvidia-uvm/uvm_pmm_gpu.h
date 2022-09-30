@@ -60,6 +60,14 @@
 #include "uvm_types.h"
 #include "nv_uvm_types.h"
 
+//fgpu20 {start}
+// '0' Pid is used by init process only
+#define UVM_PMM_INVALID_TGID    0
+
+// Number of buckets in hashtable (in log) (pid->colors)
+#define UVM_PMM_COLOR_HASHTABLE_LOG_SIZE  5
+//fgpu20 {end}
+
 typedef enum
 {
     UVM_CHUNK_SIZE_1       =           1ULL,
@@ -209,6 +217,51 @@ typedef uvm_chunk_size_t uvm_chunk_sizes_mask_t;
 typedef struct uvm_pmm_gpu_chunk_suballoc_struct uvm_pmm_gpu_chunk_suballoc_t;
 
 typedef struct uvm_gpu_chunk_struct uvm_gpu_chunk_t;
+
+//fgpu20 {start}
+typedef struct uvm_gpu_process_color_info_struct uvm_gpu_process_color_info_t;
+
+// Maintains continous range of blocks per color
+typedef struct uvm_gpu_color_range_struct {
+
+    struct list_head list;
+    
+    // Start and end addr of chunks
+    NvU64 start_phys_addr;
+    NvU64 end_phys_addr;
+
+    // Number of chunks left
+    NvU64 left_num_chunks;
+
+    // Total chunks originally
+    NvU64 total_num_chunks;
+
+    // Color of allocation
+    NvU32 allocation_color;
+
+    // List of free chunks
+    struct list_head free_chunks;
+
+    uvm_gpu_process_color_info_t *parent;
+
+} uvm_gpu_color_range_t;
+
+// Per PID color information
+struct uvm_gpu_process_color_info_struct {
+    
+    // Link to use for hashtable
+    struct hlist_node link;
+
+    // By which pid is this bank information sets (This is the tgid)
+    NvU32 master_pid;
+
+    uvm_gpu_color_range_t *color_range;
+
+    // User specified color
+    NvU32 color;
+};
+//fgpu20 {end}
+
 struct uvm_gpu_chunk_struct
 {
     // Physical address of GPU chunk. This may be removed to save memory
@@ -272,6 +325,11 @@ struct uvm_gpu_chunk_struct
 
     // Array describing suballocations
     uvm_pmm_gpu_chunk_suballoc_t *suballoc;
+
+//fgpu20 {start}
+    // Range of colored chunks of same process to which this chunk
+    uvm_gpu_color_range_t *color_range;
+//fgpu20 {end}
 };
 
 typedef struct uvm_gpu_root_chunk_struct
@@ -383,6 +441,14 @@ typedef struct
     // The mask of the initialized chunk sizes
     DECLARE_BITMAP(chunk_split_cache_initialized, UVM_PMM_CHUNK_SPLIT_CACHE_SIZES);
 
+//fgpu20 {start}
+    // Hastable for pid -> color information
+    DECLARE_HASHTABLE(color_map, UVM_PMM_COLOR_HASHTABLE_LOG_SIZE);
+
+    // List of ranges per color
+    struct list_head color_ranges_list[UVM_MAX_MEM_COLORS];
+//fgpu20 {end}
+
     bool initialized;
 
     bool pma_address_cache_initialized;
@@ -440,6 +506,9 @@ NV_STATUS uvm_pmm_gpu_alloc(uvm_pmm_gpu_t *pmm,
                             uvm_chunk_size_t chunk_size,
                             uvm_pmm_gpu_memory_type_t mem_type,
                             uvm_pmm_alloc_flags_t flags,
+//fgpu20 {start}
+                            NvU32 tgid,
+//fgpu20 {end}
                             uvm_gpu_chunk_t **chunks,
                             uvm_tracker_t *out_tracker);
 
@@ -475,10 +544,13 @@ static NV_STATUS uvm_pmm_gpu_alloc_user(uvm_pmm_gpu_t *pmm,
                                         size_t num_chunks,
                                         uvm_chunk_size_t chunk_size,
                                         uvm_pmm_alloc_flags_t flags,
+//fgpu20 {start}
+                                        NvU32 tgid,
+//fgpu20 {end}
                                         uvm_gpu_chunk_t **chunks,
                                         uvm_tracker_t *out_tracker)
 {
-    return uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, UVM_PMM_GPU_MEMORY_TYPE_USER, flags, chunks, out_tracker);
+    return uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, UVM_PMM_GPU_MEMORY_TYPE_USER, flags, /*fgpu20 {start}*/tgid,/*fgpu20 {end}*/ chunks, out_tracker);
 }
 
 // Unpin a temporarily pinned chunk and set its reverse map to a VA block
@@ -658,6 +730,13 @@ static uvm_chunk_size_t uvm_chunk_find_prev_size(uvm_chunk_sizes_mask_t chunk_si
 // checking that the chunks are still there. Also, the VA block(s) are
 // retained, and it's up to the caller to release them.
 NvU32 uvm_pmm_gpu_phys_to_virt(uvm_pmm_gpu_t *pmm, NvU64 phys_addr, NvU64 region_size, uvm_reverse_map_t *out_mappings);
+
+//fgpu20 {start}
+// Obtain the current processes color information.
+//
+// Color refers to the set color (transfer color) for the process.
+NV_STATUS uvm_pmm_get_current_process_color(uvm_pmm_gpu_t *pmm, NvU32 *color);
+//fgpu20 {end}
 
 // Iterates over every size in the input mask from smallest to largest
 #define for_each_chunk_size(__size, __chunk_sizes)                                  \

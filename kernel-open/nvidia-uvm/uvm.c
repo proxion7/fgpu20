@@ -38,6 +38,21 @@
 
 #define NVIDIA_UVM_DEVICE_NAME          "nvidia-uvm"
 
+//fgpu20 {start}
+// UVM_MEM_COLORING must be defined for UVM_USER_MEM_COLORING and 
+// UVM_TEST_MEM_COLORING
+#if (defined(UVM_USER_MEM_COLORING) && !defined(UVM_MEM_COLORING)) ||       \
+    (defined(UVM_TEST_MEM_COLORING) && !defined(UVM_MEM_COLORING))
+#error "UVM_MEM_COLORING not defined"
+#endif
+//fgpu20 {end}
+
+// Only one can be selected at a time
+#if defined(UVM_USER_MEM_COLORING) && defined(UVM_TEST_MEM_COLORING)
+#error "Both UVM_USER_MEM_COLORING and UVM_TEST_MEM_COLORING defined"
+#endif
+
+
 static dev_t g_uvm_base_dev;
 static struct cdev g_uvm_cdev;
 
@@ -939,6 +954,13 @@ static long uvm_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
         UVM_ROUTE_CMD_STACK_INIT_CHECK(UVM_CLEAN_UP_ZOMBIE_RESOURCES,      uvm_api_clean_up_zombie_resources);
         UVM_ROUTE_CMD_STACK_INIT_CHECK(UVM_POPULATE_PAGEABLE,              uvm_api_populate_pageable);
         UVM_ROUTE_CMD_STACK_INIT_CHECK(UVM_VALIDATE_VA_RANGE,              uvm_api_validate_va_range);
+//fgpu20 {start}
+        UVM_ROUTE_CMD_STACK(UVM_GET_DEVICE_COLOR_INFO,          uvm_api_get_device_color_info);
+        UVM_ROUTE_CMD_STACK(UVM_GET_PROCESS_COLOR_INFO,         uvm_api_get_process_color_info);
+        UVM_ROUTE_CMD_STACK(UVM_SET_PROCESS_COLOR_INFO,         uvm_api_set_process_color_info);
+        UVM_ROUTE_CMD_STACK(UVM_MEMCPY_COLORED,                 uvm_api_memcpy_colored);
+        UVM_ROUTE_CMD_STACK(UVM_MEMSET_COLORED,                 uvm_api_memset_colored);
+//fgpu20 {end}
     }
 
     // Try the test ioctls if none of the above matched

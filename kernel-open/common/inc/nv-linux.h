@@ -36,6 +36,10 @@
 #include "nv-timer.h"
 #include "nv-time.h"
 
+//fgpu20 {start}
+#include <linux/hashtable.h>	    /* hash table                       */
+//fgpu20 {end}
+
 #define NV_KERNEL_NAME "Linux"
 
 #ifndef AUTOCONF_INCLUDED

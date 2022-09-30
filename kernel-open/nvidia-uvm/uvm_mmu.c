@@ -1904,11 +1904,37 @@ void uvm_mmu_destroy_peer_identity_mappings(uvm_gpu_t *gpu, uvm_gpu_t *peer)
         destroy_identity_mapping(uvm_gpu_get_peer_mapping(gpu, peer->id));
 }
 
+//fgpu20 {start}
+uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_gpu_t *gpu)
+{
+    // TODO: Only use color page size when need to allocate colored page
+    uvm_chunk_sizes_mask_t sizes;
+    
+    sizes = page_sizes_for_big_page_size(gpu, UVM_PAGE_SIZE_64K)  |
+                                page_sizes_for_big_page_size(gpu, UVM_PAGE_SIZE_128K) |
+                                PAGE_SIZE;
+
+    // Although we may have to map PTEs smaller than PAGE_SIZE, user (managed)
+    // memory is never allocated with granularity smaller than PAGE_SIZE. Force
+    // PAGE_SIZE to be supported and the smallest allowed size so we don't have
+    // to handle allocating multiple chunks per page.
+    return sizes & PAGE_MASK;
+}
+//fgpu20 {end}
+
 void uvm_mmu_init_gpu_chunk_sizes(uvm_parent_gpu_t *parent_gpu)
 {
     uvm_chunk_sizes_mask_t sizes = page_sizes_for_big_page_size(parent_gpu, UVM_PAGE_SIZE_64K)  |
                                    page_sizes_for_big_page_size(parent_gpu, UVM_PAGE_SIZE_128K) |
                                    PAGE_SIZE;
+
+//fgpu20 {start}
+    // If coloring is supported, force the maximum page size to be chunk size
+    if (uvm_gpu_supports_coloring(gpu)) {
+
+        sizes &= (gpu->colored_allocation_chunk_size << 1) - 1;
+    }
+//fgpu20 {end}
 
     // Although we may have to map PTEs smaller than PAGE_SIZE, user (managed)
     // memory is never allocated with granularity smaller than PAGE_SIZE. Force

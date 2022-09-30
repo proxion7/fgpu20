@@ -992,6 +992,108 @@ typedef struct
     NV_STATUS       rmStatus;          // OUT
 } UVM_PAGEABLE_MEM_ACCESS_ON_GPU_PARAMS;
 
+//fgpu20 {start}
+// TODO: Add support for application selecting multiple colors at once.
+
+//
+// Returns the number of colors present on the gpu
+//
+
+//
+// UvmGetDeviceColorInfo
+//
+#define UVM_GET_DEVICE_COLOR_INFO                                   UVM_IOCTL_BASE(2042)
+typedef struct
+{
+    NvProcessorUuid destinationUuid;                            // IN
+    NvU32           numColors;                                  // OUT
+    NvU64           maxLength            NV_ALIGN_BYTES(8);     // OUT
+    NV_STATUS       rmStatus;                                   // OUT
+} UVM_GET_DEVICE_COLOR_INFO_PARAMS;
+
+
+//
+// Returns the information about color setting of process on a device.
+//
+
+//
+// UvmGetProcessColorInfo
+//
+#define UVM_GET_PROCESS_COLOR_INFO                                  UVM_IOCTL_BASE(2043)
+typedef struct
+{
+    NvProcessorUuid destinationUuid;                            // IN
+    NvU32           color;                                      // OUT
+    NvU64           length              NV_ALIGN_BYTES(8);      // OUT
+    NvU64           address             NV_ALIGN_BYTES(8);      // OUT
+    NV_STATUS       rmStatus;                                   // OUT
+} UVM_GET_PROCESS_COLOR_INFO_PARAMS;
+
+//
+// Configures current process's setting for a device.
+//
+
+//
+// UvmSetProcessColorInfo
+//
+#define UVM_SET_PROCESS_COLOR_INFO                                  UVM_IOCTL_BASE(2044)
+typedef struct
+{
+    NvProcessorUuid destinationUuid;                            // IN
+    NvU32           color;                                      // IN
+    NvU64           length;                                     // IN/OUT
+    NvU64           address;                                    // OUT
+    NV_STATUS       rmStatus;                                   // OUT
+} UVM_SET_PROCESS_COLOR_INFO_PARAMS;
+
+//
+// Transfers memory from one device to another device
+// (can be also same device, different address)
+// If coloring is enabled, copies only colored pages as specified by 
+// set color of the process.
+// Both dest and src addresses must be managed memory.
+// This function doesn't deal with unified memory semantics. Semantics are just
+// like cudaMemcpy(), except coloring is supported.
+//
+
+//
+// UvmMemcpyColored
+//
+
+#define UVM_MEMCPY_COLORED                                          UVM_IOCTL_BASE(2045)
+typedef struct
+{
+    NvU64           srcBase           NV_ALIGN_BYTES(8); // IN
+    NvProcessorUuid srcUuid;                             // IN
+    NvU64           destBase          NV_ALIGN_BYTES(8); // IN
+    NvProcessorUuid destUuid;                            // IN
+    NvU64           length            NV_ALIGN_BYTES(8); // IN
+    NV_STATUS       rmStatus;                            // OUT
+} UVM_MEMCPY_COLORED_PARAMS;
+
+//
+// Memset a memory region on device (must be a GPU)
+// If coloring is enabled, copies only colored pages as specified by 
+// set color of the process.
+// This function doesn't deal with unified memory semantics. Semantics are just
+// like cudaMemset(), except coloring is supported.
+//
+
+//
+// UvmMemsetColored
+//
+
+#define UVM_MEMSET_COLORED                                          UVM_IOCTL_BASE(2046)
+typedef struct
+{
+    NvU64           base              NV_ALIGN_BYTES(8); // IN
+    NvProcessorUuid uuid;                                // IN
+    NvU64           length            NV_ALIGN_BYTES(8); // IN
+    NvU8            value;                               // IN
+    NV_STATUS       rmStatus;                            // OUT
+} UVM_MEMSET_COLORED_PARAMS;
+//fgpu20 {end}
+
 //
 // UvmPopulatePageable
 //

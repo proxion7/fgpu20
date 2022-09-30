@@ -380,11 +380,21 @@ struct uvm_va_range_struct
         uvm_va_range_sked_reflected_t sked_reflected;
         uvm_va_range_semaphore_pool_t semaphore_pool;
     };
+
+//fgpu20 {start}
+    // The tgid of process that created this range
+    NvU32 master_tgid;
+//fgpu20 {end}
 };
 
 // Module load/exit
 NV_STATUS uvm_va_range_init(void);
 void uvm_va_range_exit(void);
+
+//fgpu20 {start}
+// Get the master tgid of the process that created the range
+NvU32 uvm_va_range_get_tgid(uvm_va_range_t *va_range);
+//fgpu20 {end}
 
 static NvU64 uvm_va_range_size(uvm_va_range_t *va_range)
 {

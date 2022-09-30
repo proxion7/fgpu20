@@ -30,6 +30,10 @@
 #include "uvm_lock.h"
 #include "uvm_va_block_types.h"
 
+//fgpu20 {start}
+#include "uvm8_va_block.h"
+//fgpu20 {end}
+
 typedef struct uvm_range_group_struct
 {
     // Group ID
@@ -80,6 +84,25 @@ typedef struct uvm_range_group_range_iter_struct
     // Also see uvm_range_group_range_iter_all_first()
     uvm_range_group_range_t *node;
 } uvm_range_group_range_iter_t;
+
+//fgpu20 {start}
+// Context for iterating over blocks
+typedef struct uvm_block_iter_struct
+{
+    NvU64 start;
+
+
+    uvm_va_range_t *va_range;
+
+    size_t next_block_index;
+    size_t range_end_block_index;
+
+    // Incase id == CPU_ID and no uvm block exists, create a pseduo-block
+    // with linux backed pages
+    uvm_va_block_t *cpu_block;
+
+} uvm_block_iter_t;
+//fgpu20 {end}
 
 static inline bool uvm_range_group_migratable(uvm_range_group_t *range_group)
 {

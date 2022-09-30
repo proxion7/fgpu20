@@ -380,3 +380,30 @@ NvU16 uvm_hal_maxwell_mmu_client_id_to_utlb_id_unsupported(NvU16 client_id)
     UVM_ASSERT(0);
     return 0;
 }
+
+//fgpu20 {start}
+NvU32 uvm_hal_maxwell_mmu_phys_addr_to_allocation_color_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr)
+{
+    UVM_ASSERT_MSG(false, "mmu_phys_addr_to_allocation_color called on maxwell GPU\n");
+    return 0;
+}
+
+NvU32 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr)
+{
+    UVM_ASSERT_MSG(false, "mmu_phys_addr_to_transfer_color called on maxwell GPU\n");
+    return 0;
+}
+
+NvU64 uvm_hal_maxwell_mmu_phys_addr_to_base_transfer_color_addr_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr)
+{
+    UVM_ASSERT_MSG(false, "mmu_phys_addr_to_base_transfer_color_addr called on maxwell GPU\n");
+    return 0;
+}
+
+
+NvU64 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_idx_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr)
+{
+    UVM_ASSERT_MSG(false, "mmu_phys_addr_to_transfer_color_idx called on maxwell GPU\n");
+    return 0;
+}
+//fgpu20 {end}

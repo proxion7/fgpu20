@@ -29,6 +29,10 @@
 
 #include <nvlimits.h>
 
+//fgpu20 {start}
+#include <uvm_config.h>
+//fgpu20 {end}
+
 #if defined(NV_KERNEL_INTERFACE_LAYER) && defined(__FreeBSD__)
   #include <sys/stddef.h>   // NULL
 #elif defined(NV_KERNEL_INTERFACE_LAYER) && defined(NV_LINUX)

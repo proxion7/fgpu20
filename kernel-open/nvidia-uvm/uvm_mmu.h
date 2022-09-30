@@ -8,7 +8,7 @@
     sell copies of the Software, and to permit persons to whom the Software is
     furnished to do so, subject to the following conditions:
 
-        The above copyright notice and this permission notice shall be
+        The above copyright notice and this permission notice shall be 
         included in all copies or substantial portions of the Software.
 
     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
@@ -327,6 +327,15 @@ NV_STATUS uvm_mmu_init(void);
 
 // Initialize MMU-specific information for the GPU/sub-processor
 void uvm_mmu_init_gpu_chunk_sizes(uvm_parent_gpu_t *parent_gpu);
+
+//fgpu20 {start}
+uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_gpu_t *gpu);
+
+// Returns a bitmap of allocation sizes for user memory supported by a GPU.
+// (except those not supported by colored pages when coloring is enabled)
+// PAGE_SIZE is guaranteed to be both present and the smallest size.
+//fgpu20 {end}
+
 void uvm_mmu_init_gpu_peer_addresses(uvm_gpu_t *gpu);
 
 // Create a page tree structure and allocate the root directory. location

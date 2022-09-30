@@ -210,7 +210,7 @@ static NV_STATUS chunk_alloc_check(uvm_pmm_gpu_t *pmm,
     if (gpu->mem_info.size == 0)
         return NV_ERR_NO_MEMORY;
 
-    status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, chunks, &local_tracker);
+    status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker);
     if (status != NV_OK)
         return status;
 
@@ -232,7 +232,7 @@ static NV_STATUS chunk_alloc_user_check(uvm_pmm_gpu_t *pmm,
     if (status != NV_OK)
         return status;
 
-    return chunk_alloc_check_common(pmm, num_chunks, chunk_size, mem_type, flags, chunks, &local_tracker, tracker);
+    return chunk_alloc_check_common(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker, tracker);
 }
 
 static NV_STATUS check_leak(uvm_gpu_t *gpu, uvm_chunk_size_t chunk_size, uvm_pmm_gpu_memory_type_t type, NvS64 limit, NvU64 *chunks)
@@ -1251,6 +1251,9 @@ static NV_STATUS test_indirect_peers(uvm_gpu_t *owning_gpu, uvm_gpu_t *accessing
                                               1,
                                               UVM_CHUNK_SIZE_MAX,
                                               UVM_PMM_ALLOC_FLAGS_EVICT,
+//fgpu20 {start}
+                                              UVM_PMM_INVALID_TGID,
+//fgpu20 {end}
                                               &parent_chunk,
                                               NULL), out);
 

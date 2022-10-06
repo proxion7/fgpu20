@@ -328,14 +328,6 @@ NV_STATUS uvm_mmu_init(void);
 // Initialize MMU-specific information for the GPU/sub-processor
 void uvm_mmu_init_gpu_chunk_sizes(uvm_parent_gpu_t *parent_gpu);
 
-//fgpu20 {start}
-uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_gpu_t *gpu);
-
-// Returns a bitmap of allocation sizes for user memory supported by a GPU.
-// (except those not supported by colored pages when coloring is enabled)
-// PAGE_SIZE is guaranteed to be both present and the smallest size.
-//fgpu20 {end}
-
 void uvm_mmu_init_gpu_peer_addresses(uvm_gpu_t *gpu);
 
 // Create a page tree structure and allocate the root directory. location
@@ -524,6 +516,14 @@ NV_STATUS uvm_page_table_range_vec_write_ptes(uvm_page_table_range_vec_t *range_
 // After clearing all PTEs a TLB invalidate is performed including the given
 // membar.
 NV_STATUS uvm_page_table_range_vec_clear_ptes(uvm_page_table_range_vec_t *range_vec, uvm_membar_t tlb_membar);
+
+//fgpu20 {start}
+uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_parent_gpu_t *gpu);
+
+// Returns a bitmap of allocation sizes for user memory supported by a GPU.
+// (except those not supported by colored pages when coloring is enabled)
+// PAGE_SIZE is guaranteed to be both present and the smallest size.
+//fgpu20 {end}
 
 // Create peer identity mappings
 NV_STATUS uvm_mmu_create_peer_identity_mappings(uvm_gpu_t *gpu, uvm_gpu_t *peer);

@@ -63,11 +63,21 @@
 #endif
 
 //fgpu20 {start}
-    typedef struct
+typedef struct
 {
     DECLARE_BITMAP(bitmap, PAGES_PER_UVM_VA_BLOCK);
 } uvm_page_mask_t;
+//fgpu20 {end}
 
+// Encapsulates a [first, outer) region of pages within a va block
+typedef struct
+{
+    // Page indices within the va block
+    uvm_page_index_t first;
+    uvm_page_index_t outer;
+} uvm_va_block_region_t;
+
+//fgpu20 {start}
 typedef struct
 {
     // Start address
@@ -89,19 +99,6 @@ typedef struct
     
 } uvm_va_block_colored_region_t;
 //fgpu20 {end}
-
-// Encapsulates a [first, outer) region of pages within a va block
-typedef struct
-{
-    // Page indices within the va block
-    uvm_page_index_t first;
-    uvm_page_index_t outer;
-} uvm_va_block_region_t;
-
-typedef struct
-{
-    DECLARE_BITMAP(bitmap, PAGES_PER_UVM_VA_BLOCK);
-} uvm_page_mask_t;
 
 // Encapsulates a counter tree built on top of a page mask bitmap in
 // which each leaf represents a page in the block. It contains

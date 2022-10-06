@@ -392,10 +392,10 @@ typedef uvm_mmu_mode_hal_t *(*uvm_hal_lookup_mode_hal_t)(NvU32 big_page_size);
 typedef void (*uvm_hal_mmu_enable_prefetch_faults_t)(uvm_parent_gpu_t *parent_gpu);
 typedef void (*uvm_hal_mmu_disable_prefetch_faults_t)(uvm_parent_gpu_t *parent_gpu);
 //fgpu20 {start}
-typedef NvU32 (*uvm_hal_mmu_phys_addr_to_allocation_color)(uvm_gpu_t *gpu, NvU64 phys_addr);
-typedef NvU32 (*uvm_hal_mmu_phys_addr_to_transfer_color)(uvm_gpu_t *gpu, NvU64 phys_addr);
-typedef NvU64 (*uvm_hal_mmu_phys_addr_to_base_transfer_color_addr)(uvm_gpu_t *gpu, NvU64 phys_addr);
-typedef NvU64 (*uvm_hal_mmu_phys_addr_to_transfer_color_idx)(uvm_gpu_t *gpu, NvU64 phys_addr);
+typedef NvU32 (*uvm_hal_mmu_phys_addr_to_allocation_color)(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+typedef NvU32 (*uvm_hal_mmu_phys_addr_to_transfer_color)(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+typedef NvU64 (*uvm_hal_mmu_phys_addr_to_base_transfer_color_addr)(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+typedef NvU64 (*uvm_hal_mmu_phys_addr_to_transfer_color_idx)(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
 //fgpu20 {end}
 uvm_mmu_mode_hal_t *uvm_hal_mmu_mode_maxwell(NvU32 big_page_size);
 uvm_mmu_mode_hal_t *uvm_hal_mmu_mode_pascal(NvU32 big_page_size);
@@ -408,22 +408,22 @@ uvm_mmu_mode_hal_t *uvm_hal_mmu_mode_ampere(NvU32 big_page_size);
 void uvm_hal_maxwell_mmu_enable_prefetch_faults_unsupported(uvm_parent_gpu_t *parent_gpu);
 void uvm_hal_maxwell_mmu_disable_prefetch_faults_unsupported(uvm_parent_gpu_t *parent_gpu);
 //fgpu20 {start}
-NvU32 uvm_hal_maxwell_mmu_phys_addr_to_allocation_color_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU32 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_maxwell_mmu_phys_addr_to_base_transfer_color_addr_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_idx_unsupported(uvm_gpu_t *gpu, NvU64 phys_addr);
+NvU32 uvm_hal_maxwell_mmu_phys_addr_to_allocation_color_unsupported(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU32 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_unsupported(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_maxwell_mmu_phys_addr_to_base_transfer_color_addr_unsupported(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_maxwell_mmu_phys_addr_to_transfer_color_idx_unsupported(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
 //fgpu20 {end}
 void uvm_hal_pascal_mmu_enable_prefetch_faults(uvm_parent_gpu_t *parent_gpu);
 void uvm_hal_pascal_mmu_disable_prefetch_faults(uvm_parent_gpu_t *parent_gpu);
 //fgpu20 {start}
-NvU32 uvm_hal_pascal_mmu_phys_addr_to_allocation_color(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU32 uvm_hal_pascal_mmu_phys_addr_to_transfer_color(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_pascal_mmu_phys_addr_to_transfer_color_idx(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU32 uvm_hal_volta_mmu_phys_addr_to_allocation_color(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU32 uvm_hal_volta_mmu_phys_addr_to_transfer_color(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_volta_mmu_phys_addr_to_base_transfer_color_addr(uvm_gpu_t *gpu, NvU64 phys_addr);
-NvU64 uvm_hal_volta_mmu_phys_addr_to_transfer_color_idx(uvm_gpu_t *gpu, NvU64 phys_addr);
+NvU32 uvm_hal_pascal_mmu_phys_addr_to_allocation_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU32 uvm_hal_pascal_mmu_phys_addr_to_transfer_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_pascal_mmu_phys_addr_to_transfer_color_idx(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU32 uvm_hal_volta_mmu_phys_addr_to_allocation_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU32 uvm_hal_volta_mmu_phys_addr_to_transfer_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_volta_mmu_phys_addr_to_base_transfer_color_addr(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
+NvU64 uvm_hal_volta_mmu_phys_addr_to_transfer_color_idx(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr);
 //fgpu20 {end}
 
 // Convert a faulted MMU engine ID to a UVM engine type. Only engines which have

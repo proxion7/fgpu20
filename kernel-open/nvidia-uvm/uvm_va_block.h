@@ -45,8 +45,8 @@
 #include <linux/mmu_notifier.h>
 
 //fgpu20 {start}
-#include "uvm8_hal.h"
-#include "uvm8_global.h"
+#include "uvm_hal.h"
+#include "uvm_global.h"
 //fgpu20 {end}
 
 // VA blocks are the leaf nodes in the uvm_va_space tree for managed allocations
@@ -334,6 +334,10 @@ struct uvm_va_block_struct
         // overhead on the whole.
         uvm_page_mask_t resident;
 
+	//by jake (start)
+	struct page **pages;
+	//by jake (end)
+
         // CPU memory chunks represent physically contiguous CPU memory
         // allocations. See uvm_pmm_sysmem.h for more details on CPU chunks.
         // This member is meant to hold an opaque value indicating the CPU
@@ -545,8 +549,12 @@ void uvm_va_block_exit(void);
 bool uvm_block_is_phys_contig(uvm_va_block_t *block, uvm_processor_id_t id);
 
 // Copies colored data between two blocks based on masked region provided
-NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
-                                            uvm_va_block_t *dest_block,
+//by jake {start}
+//NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
+NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *va_block,
+//                                            uvm_va_block_t *dest_block,
+                                            uvm_processor_id_t processor_id,
+//by jake {end}
                                             uvm_processor_id_t src_id,
                                             uvm_processor_id_t dest_id,
                                             uvm_va_block_colored_region_t *src_region,

@@ -390,12 +390,12 @@ void uvm_hal_pascal_mmu_disable_prefetch_faults(uvm_parent_gpu_t *parent_gpu)
 }
 
 //fgpu20 {start}
-static NvU32 uvm_hal_pascal_mmu_phys_addr_to_true_color(uvm_gpu_t *gpu, NvU64 phys_addr)
+static NvU32 uvm_hal_pascal_mmu_phys_addr_to_true_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
     NvU32 color;
     bool bit0;
 
-    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
 
     //Cache Vertically Split
     //bit0 = ((phys_addr >> 12) ^ (phys_addr >> 13) ^ (phys_addr >> 18) ^ 
@@ -407,57 +407,57 @@ static NvU32 uvm_hal_pascal_mmu_phys_addr_to_true_color(uvm_gpu_t *gpu, NvU64 ph
     color = bit0;
 
     // Transfer color represent the true number of total colors
-    UVM_ASSERT(color < gpu->num_transfer_mem_colors);
+    UVM_ASSERT(color < parent_gpu->num_transfer_mem_colors);
 
     return color;
 }
 
-NvU32 uvm_hal_pascal_mmu_phys_addr_to_allocation_color(uvm_gpu_t *gpu, NvU64 phys_addr)
+NvU32 uvm_hal_pascal_mmu_phys_addr_to_allocation_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
 
-    if (gpu->num_allocation_mem_colors == 1)
+    if (parent_gpu->num_allocation_mem_colors == 1)
         return 0;
 
-    return uvm_hal_pascal_mmu_phys_addr_to_true_color(gpu, phys_addr);
+    return uvm_hal_pascal_mmu_phys_addr_to_true_color(parent_gpu, phys_addr);
 }
 
 
-NvU32 uvm_hal_pascal_mmu_phys_addr_to_transfer_color(uvm_gpu_t *gpu, NvU64 phys_addr)
+NvU32 uvm_hal_pascal_mmu_phys_addr_to_transfer_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
 
-    if (gpu->num_transfer_mem_colors == 1)
+    if (parent_gpu->num_transfer_mem_colors == 1)
         return 0;
 
-    return uvm_hal_pascal_mmu_phys_addr_to_true_color(gpu, phys_addr);
+    return uvm_hal_pascal_mmu_phys_addr_to_true_color(parent_gpu, phys_addr);
 }
 
 
 // Returns common address for all the physical page addresses of different colors with
 // same page index
-NvU64 uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(uvm_gpu_t *gpu, NvU64 phys_addr)
+NvU64 uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
 
     // Number of transfer colors must be power of 2
-    UVM_ASSERT(1 << order_base_2(gpu->num_transfer_mem_colors) == gpu->num_transfer_mem_colors);
+    UVM_ASSERT(1 << order_base_2(parent_gpu->num_transfer_mem_colors) == parent_gpu->num_transfer_mem_colors);
 
-    if (gpu->num_transfer_mem_colors == 1)
+    if (parent_gpu->num_transfer_mem_colors == 1)
         return phys_addr;
 
-    return phys_addr & ~((1UL << (order_base_2(gpu->colored_transfer_chunk_size * gpu->num_transfer_mem_colors))) - 1);
+    return phys_addr & ~((1UL << (order_base_2(parent_gpu->colored_transfer_chunk_size * parent_gpu->num_transfer_mem_colors))) - 1);
 }
 
-NvU64 uvm_hal_pascal_mmu_phys_addr_to_transfer_color_idx(uvm_gpu_t *gpu, NvU64 phys_addr)
+NvU64 uvm_hal_pascal_mmu_phys_addr_to_transfer_color_idx(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
 
     // Number of transfer colors must be power of 2
-    UVM_ASSERT(1 << order_base_2(gpu->num_transfer_mem_colors) == gpu->num_transfer_mem_colors);
+    UVM_ASSERT(1 << order_base_2(parent_gpu->num_transfer_mem_colors) == parent_gpu->num_transfer_mem_colors);
 
-    return uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(gpu, phys_addr) >> 
-        (order_base_2(gpu->colored_transfer_chunk_size * gpu->num_transfer_mem_colors));
+    return uvm_hal_pascal_mmu_phys_addr_to_base_transfer_color_addr(parent_gpu, phys_addr) >> 
+        (order_base_2(parent_gpu->colored_transfer_chunk_size * parent_gpu->num_transfer_mem_colors));
 }
 //fgpu20 {end}
 

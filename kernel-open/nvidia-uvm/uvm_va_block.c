@@ -2184,7 +2184,7 @@ static NV_STATUS block_generic_phys_page_copy_address_get(uvm_va_block_t *block,
     NvU64 dma_address;
 
     if (block->is_linux_backed) {
-        
+
         UVM_ASSERT(block->cpu.pages);
         UVM_ASSERT(block->cpu.pages[block_page.page_index]);
 
@@ -2290,23 +2290,40 @@ static NV_STATUS block_copy_begin_push(uvm_va_block_t *va_block,
 // Begin a push appropriate for copying data from src_id processor to dst_id processor.
 static NV_STATUS block_memcopy_begin_push(uvm_processor_id_t dst_id,
                                        uvm_processor_id_t src_id,
+//by jake {start}
+				       uvm_va_block_t *va_block,
+//by jake {end}
                                        uvm_push_t *push)
 {
     uvm_channel_type_t channel_type;
     uvm_gpu_t *gpu;
  
-    if (src_id == UVM_CPU_ID) {
-        gpu = uvm_gpu_get(dst_id);
+//by jake {start}
+    //if (src_id == UVM_CPU_ID) {
+    if (UVM_ID_IS_CPU(src_id)) {
+        //gpu = uvm_gpu_get(dst_id);
+        gpu = block_get_gpu(va_block, dst_id);
+//by jake {end}
         channel_type = UVM_CHANNEL_TYPE_CPU_TO_GPU;
     }
-    else if (dst_id == UVM_CPU_ID) {
-        gpu = uvm_gpu_get(src_id);
+//by jake {start}
+    else if (UVM_ID_IS_CPU(dst_id)) {
+    //else if (id == UVM_CPU_ID) {
+        //gpu = uvm_gpu_get(src_id);
+        gpu = block_get_gpu(va_block, src_id);
+//by jake {end}
         channel_type = UVM_CHANNEL_TYPE_GPU_TO_CPU;
     }
     else {
-        UVM_ASSERT(src_id == dst_id);
+//by jake {start}
+        //UVM_ASSERT(src_id == dst_id);
+	uvm_id_equal(src_id, dst_id);
+//by jake {end}
 
-        gpu = uvm_gpu_get(src_id);
+//by jake {start}
+        //gpu = uvm_gpu_get(src_id);
+        gpu = block_get_gpu(va_block, src_id);
+//by jake {end}
 
         channel_type = UVM_CHANNEL_TYPE_GPU_INTERNAL;
     }
@@ -2316,8 +2333,12 @@ static NV_STATUS block_memcopy_begin_push(uvm_processor_id_t dst_id,
                                   NULL,
                                   push,
                                   "Copy from %s to %s",
-                                  uvm_processor_name(src_id),
-                                  uvm_processor_name(dst_id));
+//by jake {start}
+                                  //uvm_processor_name(src_id),
+                                  block_processor_name(va_block, src_id),
+                                  //uvm_processor_name(dst_id));
+                                  block_processor_name(va_block, dst_id));
+//by jake {end}
 }
 //fgpu20 {end}
 
@@ -2358,6 +2379,9 @@ static void block_update_page_dirty_state(uvm_va_block_t *block,
 static void block_mark_memory_used(uvm_va_block_t *block, uvm_processor_id_t id)
 {
     uvm_gpu_t *gpu;
+//by jake {start}
+    uvm_parent_gpu_t *parent_gpu;
+//by jake {end}
 
     if (UVM_ID_IS_CPU(id))
         return;
@@ -2366,7 +2390,10 @@ static void block_mark_memory_used(uvm_va_block_t *block, uvm_processor_id_t id)
 
     // If the block is of the max size and the GPU supports eviction, mark the
     // root chunk as used in PMM.
-    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+//by jake {start}
+    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
+//by jake {end}
         // The chunk has to be there if this GPU is resident
         UVM_ASSERT(uvm_processor_mask_test(&block->resident, id));
         uvm_pmm_gpu_mark_root_chunk_used(&gpu->pmm, uvm_va_block_gpu_state_get(block, gpu->id)->chunks[0]);
@@ -2386,7 +2413,9 @@ static void block_set_resident_processor(uvm_va_block_t *block, uvm_processor_id
 static void block_clear_resident_processor(uvm_va_block_t *block, uvm_processor_id_t id)
 {
     uvm_gpu_t *gpu;
-
+//by jake {start}
+    uvm_parent_gpu_t *parent_gpu;
+//by jake {end}
     UVM_ASSERT(uvm_page_mask_empty(uvm_va_block_resident_mask_get(block, id)));
 
     if (!uvm_processor_mask_test_and_clear(&block->resident, id))
@@ -2399,7 +2428,10 @@ static void block_clear_resident_processor(uvm_va_block_t *block, uvm_processor_
 
     // If the block is of the max size and the GPU supports eviction, mark the
     // root chunk as unused in PMM.
-    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+//by jake {start}
+    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
+//by jake {end}
         // The chunk may not be there any more when residency is cleared.
         uvm_va_block_gpu_state_t *gpu_state = uvm_va_block_gpu_state_get(block, gpu->id);
         if (gpu_state && gpu_state->chunks[0])
@@ -2826,9 +2858,13 @@ static NV_STATUS block_copy_resident_pages_between(uvm_va_block_t *block,
 // Copies pages from the src_id processor to the dst_id processor
 //
 // Acquires the block's tracker and adds all of its pushes to the copy_tracker.
-NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
-                                            uvm_va_block_t *dest_block,
-                                            uvm_processor_id_t src_id,
+//by jake {start}
+//NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
+NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *va_block,
+//                                            uvm_va_block_t *dest_block,
+                                            uvm_processor_id_t processor_id,
+//by jake {end}
+					    uvm_processor_id_t src_id,
                                             uvm_processor_id_t dest_id,
                                             uvm_va_block_colored_region_t *src_region,
                                             uvm_va_block_colored_region_t *dest_region,
@@ -2840,8 +2876,12 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
     uvm_gpu_t *gpu, *copying_gpu = NULL;
     uvm_va_block_gpu_state_t *gpu_state;
     uvm_page_index_t src_page_index, dest_page_index;
-    const bool is_src_phys_contig = uvm_block_is_phys_contig(src_block, src_id);
-    const bool is_dest_phys_contig = uvm_block_is_phys_contig(dest_block, dest_id);
+//by jake {start}
+    //const bool is_src_phys_contig = uvm_block_is_phys_contig(src_block, src_id);
+    const bool is_src_phys_contig = uvm_block_is_phys_contig(va_block, src_id);
+    //const bool is_dest_phys_contig = uvm_block_is_phys_contig(dest_block, dest_id);
+    const bool is_dest_phys_contig = uvm_block_is_phys_contig(va_block, dest_id);
+//by jake {end}
     uvm_gpu_address_t contig_src_address = {0};
     uvm_gpu_address_t contig_dest_address = {0};
     NvU64 src_page_offset, dest_page_offset;
@@ -2865,12 +2905,18 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
             dest_page_index != dest_region->region.outer) {
 
         // TODO: Add code to populate and add mapping
-        if (!block_processor_page_is_populated(src_block, src_id, src_page_index)) {
+//by jake {start}
+        //if (!block_processor_page_is_populated(src_block, src_id, src_page_index)) {
+        if (!block_processor_page_is_populated(va_block, src_id, src_page_index)) {
+//by jake {end}
             status = NV_ERR_INVALID_ADDRESS;
             break;
         }
 
-        if (!block_processor_page_is_populated(dest_block, dest_id, dest_page_index)) {
+//by jake {start}
+        //if (!block_processor_page_is_populated(dest_block, dest_id, dest_page_index)) {
+        if (!block_processor_page_is_populated(va_block, dest_id, dest_page_index)) {
+//by jake {end}
             status = NV_ERR_INVALID_ADDRESS;
             break;
         }
@@ -2878,32 +2924,48 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
         if (!copying_gpu) {
 
             // Can't be two different GPUs. Not supported yet.
-            UVM_ASSERT(src_id == UVM_CPU_ID || dest_id == UVM_CPU_ID || src_id == dest_id);
+            //UVM_ASSERT(src_id == UVM_CPU_ID || dest_id == UVM_CPU_ID || src_id == dest_id);
+            UVM_ASSERT(UVM_ID_IS_CPU(processor_id) || uvm_id_equal(src_id, dest_id));
 
             // Need to map CPU pages on GPU if not already done
-            if (src_id == UVM_CPU_ID && !src_block->is_linux_backed) {
+//by jake {start}
+            //if (src_id == UVM_CPU_ID && !src_block->is_linux_backed) {
+            if (UVM_ID_IS_CPU(src_id) && !va_block->is_linux_backed) {
 
-                gpu = uvm_gpu_get(dest_id);
+                //gpu = uvm_gpu_get(dest_id);
+                gpu = block_get_gpu(va_block, dest_id);
 
-                gpu_state = block_gpu_state_get_alloc(src_block, gpu);
+                //gpu_state = block_gpu_state_get_alloc(src_block, gpu);
+                gpu_state = block_gpu_state_get_alloc(va_block, gpu);
+//by jake {end}
                 if (!gpu_state) {
                     status = NV_ERR_NO_MEMORY;
                     break;
                 }
             }
 
-            if (dest_id == UVM_CPU_ID && !dest_block->is_linux_backed) {
+//by jake {start}
+            //if (dest_id == UVM_CPU_ID && !dest_block->is_linux_backed) {
+            if (UVM_ID_IS_CPU(dest_id) && !va_block->is_linux_backed) {
 
-                gpu = uvm_gpu_get(src_id); 
+                //gpu = uvm_gpu_get(src_id); 
+                gpu = block_get_gpu(va_block, src_id); 
+//by jake {end}
 
-                gpu_state = block_gpu_state_get_alloc(dest_block, gpu);
+//by jake {start}
+                //gpu_state = block_gpu_state_get_alloc(dest_block, gpu);
+                gpu_state = block_gpu_state_get_alloc(va_block, gpu);
+//by jake {end}
                 if (!gpu_state) {
                     status = NV_ERR_NO_MEMORY;
                     break;
                 }
             }
 
-            status = block_memcopy_begin_push(dest_id, src_id, &push);
+//by jake {start}
+            //status = block_memcopy_begin_push(dest_id, src_id, &push);
+            status = block_memcopy_begin_push(dest_id, src_id, va_block, &push);
+//by jake {end}
             if (status != NV_OK) {
                 break;
             }
@@ -2916,7 +2978,10 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
             copying_gpu = uvm_push_get_gpu(&push);
     
             if (is_src_phys_contig) {
-                status = block_generic_phys_page_copy_address_get(src_block, 
+//by jake {start}
+                //status = block_generic_phys_page_copy_address_get(src_block, 
+                status = block_generic_phys_page_copy_address_get(va_block, 
+//by jake {end}
                         block_phys_page(src_id, 0), copying_gpu, 
                         &src_dma_address);
                 if (status != NV_OK) {
@@ -2928,7 +2993,10 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
             }
 
             if (is_dest_phys_contig) {
-                status = block_generic_phys_page_copy_address_get(dest_block, 
+//by jake {start}
+                //status = block_generic_phys_page_copy_address_get(dest_block, 
+                status = block_generic_phys_page_copy_address_get(va_block, 
+//by jake {end}
                         block_phys_page(dest_id, 0), copying_gpu, 
                         &dest_dma_address);
                 if (status != NV_OK) {
@@ -2959,7 +3027,10 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
                 src_address.address += src_page_index * PAGE_SIZE;
             }
             else {
-                status = block_generic_phys_page_copy_address_get(src_block, 
+//by jake {start}
+                //status = block_generic_phys_page_copy_address_get(src_block, 
+                status = block_generic_phys_page_copy_address_get(va_block, 
+//by jake {end}
                         block_phys_page(src_id, src_page_index), copying_gpu, 
                         &src_dma_address);
                 if (status != NV_OK) {
@@ -2977,7 +3048,10 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
                 dest_address.address += dest_page_index * PAGE_SIZE;
             }
             else {
-                status = block_generic_phys_page_copy_address_get(dest_block, 
+//by jake {start}
+                //status = block_generic_phys_page_copy_address_get(dest_block, 
+                status = block_generic_phys_page_copy_address_get(va_block, 
+//by jake {end}
                         block_phys_page(dest_id, dest_page_index), copying_gpu, 
                         &dest_dma_address);
                 if (status != NV_OK) {
@@ -2993,8 +3067,12 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
             length = min(src_page_leftover, dest_page_leftover);
             UVM_ASSERT(src_region->length == dest_region->length);
 
-            uvm_push_set_flag(&push, UVM_PUSH_FLAG_CE_NEXT_MEMBAR_NONE);
-            copying_gpu->ce_hal->memcopy(&push, dest_address, src_address, length);
+//by jake {start}
+            //uvm_push_set_flag(&push, UVM_PUSH_FLAG_CE_NEXT_MEMBAR_NONE);
+            uvm_push_set_flag(&push, UVM_PUSH_FLAG_NEXT_MEMBAR_NONE);
+            //copying_gpu->ce_hal->memcopy(&push, dest_address, src_address, length);
+            copying_gpu->parent->ce_hal->memcopy(&push, dest_address, src_address, length);
+//by jake {end}
         }
         
         src_region->page_offset = (src_region->page_offset + length) & (PAGE_SIZE - 1);
@@ -3029,12 +3107,18 @@ NV_STATUS block_copy_colored_pages_between(uvm_va_block_t *src_block,
     uvm_push_end(&push);
 
     for (i = 0; i < src_dma_index; i++) {
-        block_generic_phys_page_copy_address_release(src_block, copying_gpu,
+//by jake {start}
+        //block_generic_phys_page_copy_address_release(src_block, copying_gpu,
+        block_generic_phys_page_copy_address_release(va_block, copying_gpu,
+//by jake {end}
                                                     dma_addresses[i]);
     }
 
     for (i = PAGES_PER_UVM_VA_BLOCK; i < dest_dma_index; i++) {
-        block_generic_phys_page_copy_address_release(dest_block, copying_gpu,
+//by jake {start}
+        //block_generic_phys_page_copy_address_release(dest_block, copying_gpu,
+        block_generic_phys_page_copy_address_release(va_block, copying_gpu,
+//by jake {end}
                                                     dma_addresses[i]);
     }
 
@@ -3079,7 +3163,10 @@ NV_STATUS block_memset_colored_pages(uvm_va_block_t *block,
 
         if (!gpu) {
 
-            gpu = uvm_gpu_get(id);
+//by jake {start}
+            //gpu = uvm_gpu_get(id);
+            gpu = block_get_gpu(block, id);
+//by jake {end}
 
             status = uvm_push_begin_acquire(gpu->channel_manager, 
                                             UVM_CHANNEL_TYPE_GPU_INTERNAL,
@@ -3135,9 +3222,12 @@ NV_STATUS block_memset_colored_pages(uvm_va_block_t *block,
 
             address.address += page_offset;
 
-            uvm_push_set_flag(&push, UVM_PUSH_FLAG_CE_NEXT_MEMBAR_NONE);
-
-            gpu->ce_hal->memset_1(&push, address, value, length);
+//by jake {start}
+            //uvm_push_set_flag(&push, UVM_PUSH_FLAG_CE_NEXT_MEMBAR_NONE);
+            uvm_push_set_flag(&push, UVM_PUSH_FLAG_NEXT_MEMBAR_NONE);
+            //gpu->ce_hal->memset_1(&push, address, value, length);
+            gpu->parent->ce_hal->memset_1(&push, address, value, length);
+//by jake {end}
         }
         
         region->page_offset = (region->page_offset + length) & (PAGE_SIZE - 1);
@@ -5862,6 +5952,10 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
 
     memset(new_pte_state, 0, sizeof(*new_pte_state));
     new_pte_state->needs_4k = true;
+    
+//by jake {start}
+    uvm_parent_gpu_t *parent_gpu;
+//by jake {end}
 
     // TODO: Bug 1676485: Force a specific page size for perf testing
 
@@ -5870,8 +5964,10 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
 
 //fgpu20 {start}
     // Incase coloring requires use of 4K page size, force the page size.
-    if (uvm_gpu_supports_coloring(gpu) &&
-            gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
+    //if (uvm_gpu_supports_coloring(gpu) &&
+    if (uvm_gpu_supports_coloring(parent_gpu) &&
+            //gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
+            parent_gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
         return;
 //fgpu20 {end}
 
@@ -5881,7 +5977,10 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
         // If all pages in the 2M mask have the same attributes after the
         // operation is applied, we can use a 2M PTE.
         if (uvm_page_mask_full(page_mask_after) &&
-            (!UVM_ID_IS_CPU(resident_id) || is_block_phys_contig(block, UVM_ID_CPU))) {
+//fgpu20 {start}
+            //(!UVM_ID_IS_CPU(resident_id) || is_block_phys_contig(block, UVM_ID_CPU))) {
+            (!UVM_ID_IS_CPU(resident_id) || uvm_block_is_phys_contig(block, UVM_ID_CPU))) {
+//fgpu20 {end}
             new_pte_state->pte_is_2m = true;
             new_pte_state->needs_4k = false;
             return;

@@ -31,7 +31,7 @@
 #include "uvm_va_block_types.h"
 
 //fgpu20 {start}
-#include "uvm8_va_block.h"
+#include "uvm_va_block.h"
 //fgpu20 {end}
 
 typedef struct uvm_range_group_struct

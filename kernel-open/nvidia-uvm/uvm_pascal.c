@@ -113,30 +113,30 @@ void uvm_hal_pascal_arch_init_properties(uvm_parent_gpu_t *parent_gpu)
    // it needs to be color aware.
 #if defined(UVM_TEST_MEM_COLORING)
 
-    gpu->num_allocation_mem_colors = 1;
-    gpu->num_transfer_mem_colors = 1;
-    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
-    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_2M;
+    parent_gpu->num_allocation_mem_colors = 1;
+    parent_gpu->num_transfer_mem_colors = 1;
+    parent_gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
+    parent_gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_2M;
 
 #elif defined(UVM_USER_MEM_COLORING)
 
-    gpu->num_allocation_mem_colors = 1;
-    gpu->num_transfer_mem_colors = 2;
-    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
-    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
+    parent_gpu->num_allocation_mem_colors = 1;
+    parent_gpu->num_transfer_mem_colors = 2;
+    parent_gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_2M;
+    parent_gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
 
 #else /* Kernel coloring */
 
-    gpu->num_allocation_mem_colors = 2;
-    gpu->num_transfer_mem_colors = 2;
-    gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_4K;
-    gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
+    parent_gpu->num_allocation_mem_colors = 2;
+    parent_gpu->num_transfer_mem_colors = 2;
+    parent_gpu->colored_allocation_chunk_size = UVM_PAGE_SIZE_4K;
+    parent_gpu->colored_transfer_chunk_size = UVM_PAGE_SIZE_4K;
 
 #endif
 
 #else
-    gpu->num_allocation_mem_colors = 0;
-    gpu->num_transfer_mem_colors = 0;
+    parent_gpu->num_allocation_mem_colors = 0;
+    parent_gpu->num_transfer_mem_colors = 0;
 #endif
 //fgpu20 {end}
 }

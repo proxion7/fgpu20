@@ -222,17 +222,17 @@ static NV_STATUS chunk_alloc_user_check(uvm_pmm_gpu_t *pmm,
                                         uvm_chunk_size_t chunk_size,
                                         uvm_pmm_gpu_memory_type_t mem_type,
                                         uvm_pmm_alloc_flags_t flags,
-                                        uvm_gpu_chunk_t **chunks,
+					uvm_gpu_chunk_t **chunks,
                                         uvm_tracker_t *tracker)
 {
     NV_STATUS status;
     uvm_tracker_t local_tracker = UVM_TRACKER_INIT();
 
-    status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, chunks, &local_tracker);
+    status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker);
     if (status != NV_OK)
         return status;
 
-    return chunk_alloc_check_common(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker, tracker);
+    return chunk_alloc_check_common(pmm, num_chunks, chunk_size, mem_type, flags, chunks, &local_tracker, tracker);
 }
 
 static NV_STATUS check_leak(uvm_gpu_t *gpu, uvm_chunk_size_t chunk_size, uvm_pmm_gpu_memory_type_t type, NvS64 limit, NvU64 *chunks)
@@ -1360,6 +1360,9 @@ static NV_STATUS test_chunk_with_elevated_page(uvm_gpu_t *gpu)
                                               1,
                                               UVM_CHUNK_SIZE_MAX,
                                               UVM_PMM_ALLOC_FLAGS_EVICT,
+//by jake {start}
+                                              UVM_PMM_INVALID_TGID,
+//by jake {end}					      
                                               &parent_chunk,
                                               NULL), out);
 

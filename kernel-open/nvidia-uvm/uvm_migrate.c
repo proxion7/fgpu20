@@ -557,7 +557,10 @@ static NV_STATUS uvm_block_iter_initialization(uvm_va_space_t *va_space,
     // pages
     // TODO: It can be that the start block is not within any range but
     // the subsequent blocks might be. We need to handle this behaviour
-    if (!first_va_range & (id == UVM_CPU_ID)) {
+//by jake {start}
+    //if (!first_va_range & (id == UVM_CPU_ID)) {
+    if (!first_va_range & (UVM_ID_IS_CPU(id))) {
+//by jake {end}
 
         iter->cpu_block = kmalloc(sizeof(uvm_va_block_t), GFP_KERNEL);
         if (!iter->cpu_block) {
@@ -668,6 +671,11 @@ NV_STATUS uvm_update_va_colored_block_region(uvm_va_block_t *va_block,
     NvU64 page_start, page_end, page_size, page_offset;
     NvU32 page_color;
 
+//by jake {start}
+    uvm_global_gpu_id_t gpu_id;
+    uvm_parent_gpu_t *parent_gpu;
+//by jake {end}
+
     // No update needed if current block same as last block
     if (region->last_block_start && region->last_block_start == va_block->start)
         return NV_OK;
@@ -677,7 +685,11 @@ NV_STATUS uvm_update_va_colored_block_region(uvm_va_block_t *va_block,
     page_offset = region->page_offset;
 
     // No coloring on CPU side
-    if (id == UVM_CPU_ID) {
+//by jake {start}
+    //if (id == UVM_CPU_ID) {
+    if (uvm_gpu_get(gpu_id)) {
+    //if (UVM_ID_IS_CPU(id)) {
+//by jake {end}
         int ret, i;
         struct page *page;
 
@@ -718,7 +730,11 @@ NV_STATUS uvm_update_va_colored_block_region(uvm_va_block_t *va_block,
     outer = uvm_va_block_cpu_page_index(va_block, va_block->end) + 1;
     last = first;
 
-    gpu = uvm_gpu_get(id);
+//by jake {start}
+    //gpu = uvm_gpu_get(id);
+    gpu = uvm_gpu_get(gpu_id);
+    //gpu = UVM_ID_IS_CPU(id);
+//by jake {end}
 
     // If physically contiguous, get the start phy address and then increment
     // Else find physical address for all the pages seperately
@@ -730,7 +746,10 @@ NV_STATUS uvm_update_va_colored_block_region(uvm_va_block_t *va_block,
 
         for (i = first; i < outer && left != 0; i++, phy_addr.address += PAGE_SIZE) {
     
-            page_color = gpu->arch_hal->phys_addr_to_transfer_color(gpu, phy_addr.address);
+//by jake {start}
+            //page_color = gpu->arch_hal->phys_addr_to_transfer_color(gpu, phy_addr.address);
+            page_color = parent_gpu->arch_hal->phys_addr_to_transfer_color(parent_gpu, phy_addr.address);
+//by jake {end}
             if (page_color != region->color) {
                 continue;
             }
@@ -752,7 +771,10 @@ NV_STATUS uvm_update_va_colored_block_region(uvm_va_block_t *va_block,
    
             phy_addr = uvm_va_block_gpu_phys_page_address(va_block, i, gpu);
 
-            page_color = gpu->arch_hal->phys_addr_to_transfer_color(gpu, phy_addr.address);
+//by jake {start}
+            //page_color = gpu->arch_hal->phys_addr_to_transfer_color(gpu, phy_addr.address);
+            page_color = parent_gpu->arch_hal->phys_addr_to_transfer_color(parent_gpu, phy_addr.address);
+//by jake {end}
             if (page_color != region->color) {
                 continue;
             }
@@ -802,7 +824,10 @@ static NV_STATUS uvm_va_block_memcpy_colored_locked(uvm_va_block_t *src_va_block
         goto out;
 
     status = block_copy_colored_pages_between(src_va_block,
-                                                dest_va_block,
+//by jake {start}
+//                                                dest_va_block,
+						src_id,
+//by jake {end}
                                                 src_id,
                                                 dest_id,
                                                 src_region,
@@ -1160,7 +1185,9 @@ static NV_STATUS uvm_memcpy_colored(uvm_va_space_t *va_space,
 {
     NV_STATUS status = NV_OK;
 
-    uvm_assert_mmap_sem_locked(&current->mm->mmap_sem);
+//by jake {start}
+    //uvm_assert_mmap_sem_locked(&current->mm->mmap_sem);
+//by jake {start}
     uvm_assert_rwsem_locked(&va_space->lock);
 
     // TODO: Populate pages and map them
@@ -1189,7 +1216,9 @@ static NV_STATUS uvm_memset_colored(uvm_va_space_t *va_space,
 {
     NV_STATUS status = NV_OK;
 
-    uvm_assert_mmap_sem_locked(&current->mm->mmap_sem);
+//by jake {start}
+    //uvm_assert_mmap_sem_locked(&current->mm->mmap_sem);
+//by jake {end}
     uvm_assert_rwsem_locked(&va_space->lock);
 
     // TODO: Populate pages and map them
@@ -1609,10 +1638,19 @@ NV_STATUS uvm_api_memcpy_colored(UVM_MEMCPY_COLORED_PARAMS *params, struct file 
     NvU32 color = 0;
     NV_STATUS status;
     NV_STATUS tracker_status = NV_OK;
+//by jake {start}
+    struct mm_struct *mm;
+    uvm_processor_id_t src_id;
+    uvm_processor_id_t dest_id;
+//by jake {end}
 
     // mmap_sem will be needed if we have to create CPU mappings
-    uvm_down_read_mmap_sem(&current->mm->mmap_sem);
+
+//by jake {start}
+    //uvm_down_read_mmap_sem(&current->mm->mmap_sem);
+    mm = uvm_va_space_mm_or_current_retain_lock(va_space);
     uvm_va_space_down_read(va_space);
+//by jake {end}
 
     if (uvm_uuid_is_cpu(&params->srcUuid)) {
         src_gpu = NULL;
@@ -1640,7 +1678,10 @@ NV_STATUS uvm_api_memcpy_colored(UVM_MEMCPY_COLORED_PARAMS *params, struct file 
 
     // Either atmost one src/dest lie on CPU or both lie on same GPU
     // Invalid configuration: Both lie on CPU or different GPUs
-    if ((!src_gpu && !dest_gpu) || (src_gpu && dest_gpu && src_gpu->id != dest_gpu->id)) {
+//by jake {start}
+    //if ((!src_gpu && !dest_gpu) || (src_gpu && dest_gpu && src_gpu->id != dest_gpu->id)) {
+    if ((!src_gpu && !dest_gpu) || (src_gpu && dest_gpu && uvm_id_equal(src_id, dest_id))) {
+//by jake {end}
     	status = NV_ERR_INVALID_DEVICE;
         goto done;
     }
@@ -1663,8 +1704,12 @@ NV_STATUS uvm_api_memcpy_colored(UVM_MEMCPY_COLORED_PARAMS *params, struct file 
 
     // This is synchronous call, so using a tracker.
     status = uvm_memcpy_colored(va_space, params->srcBase, params->destBase, 
-                                params->length, color, (src_gpu ? src_gpu->id : UVM_CPU_ID),
-                                (dest_gpu ? dest_gpu->id : UVM_CPU_ID),
+//by jake {start}
+                                //params->length, color, (src_gpu ? src_gpu->id : UVM_CPU_ID),
+                                params->length, color, (src_gpu ? src_gpu->id : dest_id),
+                                //(dest_gpu ? dest_gpu->id : UVM_CPU_ID),
+                                (dest_gpu ? dest_gpu->id : dest_id),
+//by jake {start}
                                 &tracker);
 
 done:
@@ -1675,7 +1720,14 @@ done:
     //       benchmarks to see if a two-pass approach would be faster (first
     //       pass pushes all GPU work asynchronously, second pass updates CPU
     //       mappings synchronously).
-    uvm_up_read_mmap_sem_out_of_order(&current->mm->mmap_sem);
+
+//by jake {start}
+    //uvm_up_read_mmap_sem_out_of_order(&current->mm->mmap_sem);
+    if (mm) {
+        uvm_up_read_mmap_lock_out_of_order(mm);
+        uvm_va_space_mm_or_current_release(va_space, mm); 
+    }
+//by jake {end}
 
     // There was an error or we are sync. Even if there was an error, we
     // need to wait for work already dispatched to complete. Waiting on
@@ -1702,10 +1754,17 @@ NV_STATUS uvm_api_memset_colored(UVM_MEMSET_COLORED_PARAMS *params, struct file 
     NvU32 color = 0;
     NV_STATUS status;
     NV_STATUS tracker_status = NV_OK;
+//by jake {start}
+    struct mm_struct *mm;
+//by jake {jake}
 
     // mmap_sem will be needed if we have to create CPU mappings
-    uvm_down_read_mmap_sem(&current->mm->mmap_sem);
+
+//by jake {start}
+    //uvm_down_read_mmap_sem(&current->mm->mmap_sem);
+    mm = uvm_va_space_mm_or_current_retain_lock(va_space);
     uvm_va_space_down_read(va_space);
+//by jake {end}
 
     // Only GPU are supported (CPU can use memset() in userspace)
     if (uvm_uuid_is_cpu(&params->uuid)) {
@@ -1740,7 +1799,14 @@ done:
     //       benchmarks to see if a two-pass approach would be faster (first
     //       pass pushes all GPU work asynchronously, second pass updates CPU
     //       mappings synchronously).
-    uvm_up_read_mmap_sem_out_of_order(&current->mm->mmap_sem);
+
+//by jake {start}
+    //uvm_up_read_mmap_sem_out_of_order(&current->mm->mmap_sem);
+    if (mm) {
+        uvm_up_read_mmap_lock_out_of_order(mm);
+        uvm_va_space_mm_or_current_release(va_space, mm); 
+    }
+//by jake {end}
 
     // There was an error or we are sync. Even if there was an error, we
     // need to wait for work already dispatched to complete. Waiting on

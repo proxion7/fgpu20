@@ -70,7 +70,7 @@ void uvm_hal_maxwell_arch_init_properties(uvm_parent_gpu_t *parent_gpu)
 
     parent_gpu->plc_supported = false;
 //fgpu20 {start}
-    gpu->num_allocation_mem_colors = 0;
-    gpu->num_transfer_mem_colors = 0;
+    parent_gpu->num_allocation_mem_colors = 0;
+    parent_gpu->num_transfer_mem_colors = 0;
 //fgpu20 {end}
 }

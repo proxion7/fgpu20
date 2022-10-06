@@ -1037,6 +1037,23 @@ struct uvm_parent_gpu_struct
         NvU64 fabric_memory_window_start;
     } nvswitch_info;
 
+//fgpu20 {start}
+    // This is the number of colors provided during allocation.
+    // For userspace coloring, this would be equal to 1 since all coloring
+    // happens in userspace
+    // This is set to 0 to indicate GPU doesn't support coloring yet.
+    NvU32 num_allocation_mem_colors;
+
+    // This is the number of colors provided for transfer of memory.
+    // For userspace coloring, this can be greater than 1 since memory transfer
+    // between devices needs to be color aware in a similar manner to userspace
+    NvU32 num_transfer_mem_colors;
+
+    // Only valid if num_mem_colors != 0
+    NvU64 colored_allocation_chunk_size;
+    NvU64 colored_transfer_chunk_size;
+//fgpu20 {end}
+
     uvm_gpu_link_type_t sysmem_link;
     NvU32 sysmem_link_rate_mbyte_per_s;
 };
@@ -1058,22 +1075,6 @@ static uvmGpuDeviceHandle uvm_gpu_device_handle(uvm_gpu_t *gpu)
     return gpu->parent->rm_device;
 }
 
-//fgpu20 {start}
-    // This is the number of colors provided during allocation.
-    // For userspace coloring, this would be equal to 1 since all coloring
-    // happens in userspace
-    // This is set to 0 to indicate GPU doesn't support coloring yet.
-    NvU32 num_allocation_mem_colors;
-
-    // This is the number of colors provided for transfer of memory.
-    // For userspace coloring, this can be greater than 1 since memory transfer
-    // between devices needs to be color aware in a similar manner to userspace
-    NvU32 num_transfer_mem_colors;
-
-    // Only valid if num_mem_colors != 0
-    NvU64 colored_allocation_chunk_size;
-    NvU64 colored_transfer_chunk_size;
-//fgpu20 {end}
 struct uvm_gpu_peer_struct
 {
     // The fields in this global structure can only be inspected under one of
@@ -1377,29 +1378,29 @@ bool uvm_gpu_can_address(uvm_gpu_t *gpu, NvU64 addr, NvU64 size);
 NvU64 uvm_parent_gpu_canonical_address(uvm_parent_gpu_t *parent_gpu, NvU64 addr);
 
 //fgpu20 {start}
-static bool uvm_gpu_supports_coloring(uvm_gpu_t *gpu)
+static bool uvm_gpu_supports_coloring(uvm_parent_gpu_t *parent_gpu)
 {
     // If coloring is not supported, both types of colors should be zero.
-    UVM_ASSERT((gpu->num_allocation_mem_colors == 0) ==
-        (gpu->num_transfer_mem_colors == 0));
+    UVM_ASSERT((parent_gpu->num_allocation_mem_colors == 0) ==
+        (parent_gpu->num_transfer_mem_colors == 0));
 
-    if (gpu->num_allocation_mem_colors == 0)
+    if (parent_gpu->num_allocation_mem_colors == 0)
         return false;
     return true;
 }
 //fgpu20 {end}
 
-static bool uvm_gpu_supports_eviction(uvm_gpu_t *gpu)
+static bool uvm_gpu_supports_eviction(uvm_parent_gpu_t *parent_gpu)
 {
 
 //fgpu20 {start}
     // XXX: Restricting eviction for now as it is not working correctly.
-    if (uvm_gpu_supports_coloring(gpu))
+    if (uvm_gpu_supports_coloring(parent_gpu))
         return false;
 //fgpu20 {end}
 
     // Eviction is supported only if the GPU supports replayable faults
-    return gpu->parent->replayable_faults_supported;
+    return parent_gpu->replayable_faults_supported;
 }
 
 static bool uvm_gpu_is_virt_mode_sriov_heavy(const uvm_gpu_t *gpu)

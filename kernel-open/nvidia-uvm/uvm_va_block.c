@@ -1067,8 +1067,10 @@ static NV_STATUS block_alloc_gpu_chunk(uvm_va_block_t *block,
         }
         else {
             // Try allocating a new one without eviction
+	    
             status = uvm_pmm_gpu_alloc_user(&gpu->pmm, 1, size, UVM_PMM_ALLOC_FLAGS_NONE, /*fgpu20 {start}*/uvm_va_range_get_tgid(block->va_range),/*fgpu20 {end}*/ &gpu_chunk, &retry->tracker);
-        }
+
+	}
 
         if (status == NV_ERR_NO_MEMORY) {
             // If that fails with no memory, try allocating with eviction and
@@ -2378,9 +2380,9 @@ static void block_update_page_dirty_state(uvm_va_block_t *block,
 
 static void block_mark_memory_used(uvm_va_block_t *block, uvm_processor_id_t id)
 {
-    uvm_gpu_t *gpu;
 //by jake {start}
-    uvm_parent_gpu_t *parent_gpu;
+    uvm_gpu_t *gpu;
+    //uvm_parent_gpu_t *parent_gpu;
 //by jake {end}
 
     if (UVM_ID_IS_CPU(id))
@@ -2391,8 +2393,8 @@ static void block_mark_memory_used(uvm_va_block_t *block, uvm_processor_id_t id)
     // If the block is of the max size and the GPU supports eviction, mark the
     // root chunk as used in PMM.
 //by jake {start}
-    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
-    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
+    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
 //by jake {end}
         // The chunk has to be there if this GPU is resident
         UVM_ASSERT(uvm_processor_mask_test(&block->resident, id));
@@ -2412,9 +2414,9 @@ static void block_set_resident_processor(uvm_va_block_t *block, uvm_processor_id
 
 static void block_clear_resident_processor(uvm_va_block_t *block, uvm_processor_id_t id)
 {
-    uvm_gpu_t *gpu;
 //by jake {start}
-    uvm_parent_gpu_t *parent_gpu;
+    uvm_gpu_t *gpu;
+    //uvm_parent_gpu_t *parent_gpu;
 //by jake {end}
     UVM_ASSERT(uvm_page_mask_empty(uvm_va_block_resident_mask_get(block, id)));
 
@@ -2429,8 +2431,8 @@ static void block_clear_resident_processor(uvm_va_block_t *block, uvm_processor_
     // If the block is of the max size and the GPU supports eviction, mark the
     // root chunk as unused in PMM.
 //by jake {start}
-    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
-    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
+    if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(gpu)) {
+    //if (uvm_va_block_size(block) == UVM_CHUNK_SIZE_MAX && uvm_gpu_supports_eviction(parent_gpu)) {
 //by jake {end}
         // The chunk may not be there any more when residency is cleared.
         uvm_va_block_gpu_state_t *gpu_state = uvm_va_block_gpu_state_get(block, gpu->id);
@@ -2485,11 +2487,12 @@ static bool block_phys_copy_contig_check(uvm_va_block_t *block,
 
 // Check if the VA block has a single physically-contiguous chunk of storage
 // on the processor.
-//static bool is_block_phys_contig(uvm_va_block_t *block, uvm_processor_id_t id) /*original function name*/
+//static bool is_block_phys_contig(uvm_va_block_t *block, uvm_processor_id_t id) //original function name
 //fgpu20 {start}
 bool uvm_block_is_phys_contig(uvm_va_block_t *block, uvm_processor_id_t id)
 //fgpu20 {end}
 {
+
     uvm_cpu_chunk_t *chunk = uvm_cpu_chunk_first_in_block(block, NULL);
 
     if (UVM_ID_IS_GPU(id))
@@ -2548,11 +2551,13 @@ static NV_STATUS block_copy_resident_pages_between(uvm_va_block_t *block,
     const bool may_prefetch = (cause == UVM_MAKE_RESIDENT_CAUSE_REPLAYABLE_FAULT ||
                                cause == UVM_MAKE_RESIDENT_CAUSE_NON_REPLAYABLE_FAULT ||
                                cause == UVM_MAKE_RESIDENT_CAUSE_ACCESS_COUNTER) && !!prefetch_page_mask;
-    //const bool is_src_phys_contig = is_block_phys_contig(block, src_id); /*original code*/
-    //const bool is_dst_phys_contig = is_block_phys_contig(block, dst_id); /*original code*/
+    //const bool is_src_phys_contig = is_block_phys_contig(block, src_id); //original code
+    //const bool is_dst_phys_contig = is_block_phys_contig(block, dst_id); //original code
 //fgpu20 {start}
+
     const bool is_src_phys_contig = uvm_block_is_phys_contig(block, src_id);
     const bool is_dst_phys_contig = uvm_block_is_phys_contig(block, dst_id);
+
 //fgpu20 {end}
     uvm_gpu_address_t contig_src_address = {0};
     uvm_gpu_address_t contig_dst_address = {0};
@@ -5954,7 +5959,7 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
     new_pte_state->needs_4k = true;
     
 //by jake {start}
-    uvm_parent_gpu_t *parent_gpu;
+    //uvm_parent_gpu_t *parent_gpu;
 //by jake {end}
 
     // TODO: Bug 1676485: Force a specific page size for perf testing
@@ -5965,9 +5970,10 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
 //fgpu20 {start}
     // Incase coloring requires use of 4K page size, force the page size.
     //if (uvm_gpu_supports_coloring(gpu) &&
-    if (uvm_gpu_supports_coloring(parent_gpu) &&
-            //gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
-            parent_gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
+
+    if (uvm_gpu_supports_coloring(gpu) &&
+            gpu->parent->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
+            //parent_gpu->colored_allocation_chunk_size == UVM_PAGE_SIZE_4K)
         return;
 //fgpu20 {end}
 
@@ -5980,6 +5986,7 @@ static void block_gpu_compute_new_pte_state(uvm_va_block_t *block,
 //fgpu20 {start}
             //(!UVM_ID_IS_CPU(resident_id) || is_block_phys_contig(block, UVM_ID_CPU))) {
             (!UVM_ID_IS_CPU(resident_id) || uvm_block_is_phys_contig(block, UVM_ID_CPU))) {
+
 //fgpu20 {end}
             new_pte_state->pte_is_2m = true;
             new_pte_state->needs_4k = false;

@@ -376,11 +376,11 @@ static void root_chunk_unlock(uvm_pmm_gpu_t *pmm, uvm_gpu_root_chunk_t *root_chu
 // TODO: Bug 1795559: Remove once PMA eviction is considered safe enough not to
 // have an opt-out.
 //by jake {start}
-//static bool gpu_supports_pma_eviction(uvm_gpu_t *gpu)
-static bool gpu_supports_pma_eviction(uvm_parent_gpu_t *parent_gpu)
+static bool gpu_supports_pma_eviction(uvm_gpu_t *gpu)
+//static bool gpu_supports_pma_eviction(uvm_parent_gpu_t *parent_gpu)
 {
-    //return uvm_global_oversubscription && uvm_gpu_supports_eviction(gpu);
-    return uvm_global_oversubscription && uvm_gpu_supports_eviction(parent_gpu);
+    return uvm_global_oversubscription && uvm_gpu_supports_eviction(gpu);
+    //return uvm_global_oversubscription && uvm_gpu_supports_eviction(parent_gpu);
 }
 //by jake {end}
 
@@ -619,6 +619,7 @@ NV_STATUS uvm_pmm_gpu_alloc(uvm_pmm_gpu_t *pmm,
         uvm_gpu_root_chunk_t *root_chunk;
 
         status = alloc_chunk(pmm, mem_type, chunk_size, flags, /*fgpu20 {start}*/tgid,/*fgpu20 {end}*/ &chunks[i]);
+
         if (status != NV_OK)
             goto error;
 
@@ -652,7 +653,7 @@ NV_STATUS uvm_pmm_gpu_alloc(uvm_pmm_gpu_t *pmm,
     }
 
 //fgpu20 {start}
-    //return uvm_tracker_wait_deinit(&local_tracker);  /*original return value*/
+    //return uvm_tracker_wait_deinit(&local_tracker);  //original return value
     status = uvm_tracker_wait_deinit(&local_tracker);
 
     for (i = 0; i < num_chunks; i++)
@@ -684,11 +685,8 @@ NV_STATUS uvm_pmm_gpu_alloc_kernel(uvm_pmm_gpu_t *pmm,
     size_t i;
     uvm_pmm_gpu_memory_type_t memory_type = UVM_PMM_GPU_MEMORY_TYPE_KERNEL;
 
-
-
-
-
     status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, memory_type, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ flags, chunks, out_tracker);
+
     if (status != NV_OK)
         return status;
 
@@ -744,9 +742,11 @@ void uvm_pmm_gpu_unpin_temp(uvm_pmm_gpu_t *pmm, uvm_gpu_chunk_t *chunk, uvm_va_b
 
     chunk_unpin(pmm, chunk, UVM_PMM_GPU_CHUNK_STATE_ALLOCATED);
     chunk->va_block = va_block;
+
 //fgpu20 {start}
     if (!is_colored_chunk(chunk))
 //fgpu20 {end}
+
         chunk_update_lists_locked(pmm, chunk);
 
     uvm_spin_unlock(&pmm->list_lock);
@@ -1817,7 +1817,18 @@ static NV_STATUS pick_and_evict_root_chunk(uvm_pmm_gpu_t *pmm,
 
 //by jake {start}
     //UVM_ASSERT(uvm_gpu_supports_eviction(gpu));
-    UVM_ASSERT(uvm_gpu_supports_eviction(parent_gpu));
+
+//by jake DEBUG {start}
+        printk("Before UVM_ASSERT(uvm_gpu_supports_eviction(parent_gpu)) - uvm_pmm_gpu.c:1822 \n");
+//by jake DEBUG {end}
+
+    UVM_ASSERT(uvm_gpu_supports_eviction(gpu));
+    //UVM_ASSERT(uvm_gpu_supports_eviction(parent_gpu));
+
+//by jake DEBUG {start}
+        printk("After UVM_ASSERT(uvm_gpu_supports_eviction(parent_gpu)) - uvm_pmm_gpu.c:1828 \n");
+//by jake DEBUG {end}
+
 //by jake {end}
 
     uvm_assert_mutex_locked(&pmm->lock);
@@ -1985,8 +1996,8 @@ static NV_STATUS alloc_or_evict_root_chunk(uvm_pmm_gpu_t *pmm,
     status = alloc_root_chunk(pmm, type, flags, &chunk);
     if (status != NV_OK) {
 //by jake {start}
-        //if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(gpu))
-        if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(parent_gpu))
+        if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(gpu))
+        //if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(parent_gpu))
 //by jake {end}
             status = pick_and_evict_root_chunk_retry(pmm, type, PMM_CONTEXT_DEFAULT, chunk_out);
 
@@ -2013,8 +2024,8 @@ static NV_STATUS alloc_or_evict_root_chunk_unlocked(uvm_pmm_gpu_t *pmm,
     status = alloc_root_chunk(pmm, type, flags, &chunk);
     if (status != NV_OK) {
 //by jake {start}
-        //if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(gpu)) {
-        if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(parent_gpu)) {
+        if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(gpu)) {
+        //if ((flags & UVM_PMM_ALLOC_FLAGS_EVICT) && uvm_gpu_supports_eviction(parent_gpu)) {
 //by jake {end}
             uvm_mutex_lock(&pmm->lock);
             status = pick_and_evict_root_chunk_retry(pmm, type, PMM_CONTEXT_DEFAULT, chunk_out);
@@ -2127,8 +2138,9 @@ NV_STATUS alloc_chunk(uvm_pmm_gpu_t *pmm,
                       uvm_gpu_chunk_t **out_chunk)
 {
     NV_STATUS status;
+
 //fgpu20 {start}
-    //uvm_gpu_chunk_t *chunk;  /*original code*/
+    //uvm_gpu_chunk_t *chunk;  //original code
     uvm_gpu_chunk_t *chunk = NULL;
 
     // See if colored chunk can be used to satisfy the request
@@ -2260,8 +2272,8 @@ NV_STATUS alloc_root_chunk(uvm_pmm_gpu_t *pmm,
     options.flags = UVM_PMA_ALLOCATE_DONT_EVICT;
 
 //by jake {start}
-    //if (uvm_pmm_gpu_memory_type_is_kernel(type) || !gpu_supports_pma_eviction(gpu))
-    if (uvm_pmm_gpu_memory_type_is_kernel(type) || !gpu_supports_pma_eviction(parent_gpu))
+    if (uvm_pmm_gpu_memory_type_is_kernel(type) || !gpu_supports_pma_eviction(gpu))
+    //if (uvm_pmm_gpu_memory_type_is_kernel(type) || !gpu_supports_pma_eviction(parent_gpu))
 //by jake {end}
         options.flags |= UVM_PMA_ALLOCATE_PINNED;
 
@@ -2756,7 +2768,6 @@ static void free_chunk(uvm_pmm_gpu_t *pmm, uvm_gpu_chunk_t *chunk)
 //fgpu20 {start}
 //    pr_info("uvm_gpu_free: size: %d, chunk phy_addr: 0x%llx, color_range:%p\n",
 //                uvm_gpu_chunk_get_size(chunk), chunk->address, chunk->color_range);
-
     status = try_user_color_free_chunk(pmm, chunk);
     if (status == NV_OK)
         return;
@@ -3402,13 +3413,12 @@ NvU32 uvm_pmm_gpu_phys_to_virt(uvm_pmm_gpu_t *pmm, NvU64 phys_addr, NvU64 region
 }
 
 //fgpu20 {start}
-static size_t max_reserve_color_memory_size(uvm_parent_gpu_t *parent_gpu)
+static size_t max_reserve_color_memory_size(uvm_gpu_t *gpu)
 {
-    uvm_gpu_t *gpu; 
     size_t s = ((UVM_MAX_COLOR_MEM_RESV_PERCENTAGE) * 
         gpu->mem_info.max_allocatable_address) / 100;
     /* Round down according to the chunk size */
-    s &= ~(parent_gpu->colored_allocation_chunk_size - 1);
+    s &= ~(gpu->parent->colored_allocation_chunk_size - 1);
     return s;
 }
 
@@ -3423,7 +3433,8 @@ static NV_STATUS reserve_color_memory(uvm_parent_gpu_t *parent_gpu, uvm_pmm_gpu_
     size_t color;
     size_t resv_mem;
     NV_STATUS status = NV_OK;
-   
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
+
     for (i = 0; i < parent_gpu->num_allocation_mem_colors; i++) {
 
         INIT_LIST_HEAD(&pmm->color_ranges_list[i]);
@@ -3443,7 +3454,7 @@ static NV_STATUS reserve_color_memory(uvm_parent_gpu_t *parent_gpu, uvm_pmm_gpu_
         list_add_tail(&range->list, &pmm->color_ranges_list[i]);
     }
 
-    resv_mem = max_reserve_color_memory_size(parent_gpu);
+    resv_mem = max_reserve_color_memory_size(gpu);
     
     // Reserve chunks from the GPU
     for (allocated = 0; allocated < resv_mem;
@@ -3529,7 +3540,7 @@ static NV_STATUS allocate_process_color_memory_locked(uvm_pmm_gpu_t *pmm,
 {
 //by jake {start}
     //uvm_gpu_t *gpu = pmm->gpu;
-    uvm_gpu_t *gpu;
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
     uvm_parent_gpu_t *parent_gpu;
 //by jake {end}
     struct list_head *nr, *tr;
@@ -3625,10 +3636,10 @@ static NvBool can_be_colored_chunk(uvm_pmm_gpu_t *pmm,
                                     uvm_pmm_gpu_memory_type_t chunk_type,
                                     uvm_chunk_size_t chunk_size)
 {
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
 //by jake {start}
-    uvm_parent_gpu_t *parent_gpu;
     //if (!uvm_gpu_supports_coloring(pmm->gpu))
-    if (!uvm_gpu_supports_coloring(parent_gpu))
+    if (!uvm_gpu_supports_coloring(gpu))
 //by jake {start}
         return false;
 
@@ -3636,7 +3647,7 @@ static NvBool can_be_colored_chunk(uvm_pmm_gpu_t *pmm,
     return (chunk_type == UVM_PMM_GPU_MEMORY_TYPE_USER) && 
 //by jake {start}
             //(chunk_size == pmm->gpu->colored_allocation_chunk_size);
-            (chunk_size == parent_gpu->colored_allocation_chunk_size);
+            (chunk_size == gpu->parent->colored_allocation_chunk_size);
 //by jake {end}
 }
 
@@ -3647,6 +3658,7 @@ static NV_STATUS try_alloc_user_color_chunk(uvm_pmm_gpu_t *pmm,
                       NvU32 tgid,
                       uvm_gpu_chunk_t **out_chunk)
 {
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
     NvBool is_color;
     uvm_gpu_process_color_info_t *color_info;
     uvm_gpu_color_range_t *range;
@@ -3744,22 +3756,23 @@ static NV_STATUS get_device_color_info(uvm_pmm_gpu_t *pmm,
         NvU64 *maxLength)
 {
 //by jake {start}
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
     uvm_parent_gpu_t *parent_gpu;
     //if (!uvm_gpu_supports_coloring(pmm->gpu))
-    if (!uvm_gpu_supports_coloring(parent_gpu))
+    if (!uvm_gpu_supports_coloring(gpu))
         return NV_ERR_NOT_SUPPORTED;
 
     if (num_allocation_colors)
         //*num_allocation_colors = pmm->gpu->num_allocation_mem_colors;
-        *num_allocation_colors = parent_gpu->num_allocation_mem_colors;
+        *num_allocation_colors = gpu->parent->num_allocation_mem_colors;
     
     if (num_transfer_colors)
         //*num_transfer_colors = pmm->gpu->num_transfer_mem_colors;
-        *num_transfer_colors = parent_gpu->num_transfer_mem_colors;
+        *num_transfer_colors = gpu->parent->num_transfer_mem_colors;
 
     if (maxLength)
         //*maxLength = max_reserve_color_memory_size(pmm->gpu);
-        *maxLength = max_reserve_color_memory_size(parent_gpu);
+        *maxLength = max_reserve_color_memory_size(gpu);
 //by jake {end}
 
     return NV_OK;
@@ -3858,13 +3871,14 @@ static uvm_gpu_process_color_info_t *get_process_color_info_locked(uvm_pmm_gpu_t
 static NV_STATUS get_current_process_color_info(uvm_pmm_gpu_t *pmm, NvU32 *color,
                                 NvU64 *address, NvU64 *length)
 {
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
     NV_STATUS status = NV_OK;
     uvm_gpu_process_color_info_t *node = NULL;
     pid_t current_pid = task_tgid_nr(current);
 //by jake {start}
     uvm_parent_gpu_t *parent_gpu;
     //if (!uvm_gpu_supports_coloring(pmm->gpu))
-    if (!uvm_gpu_supports_coloring(parent_gpu))
+    if (!uvm_gpu_supports_coloring(gpu))
 //by jake {end}
         return NV_ERR_NOT_SUPPORTED;
 
@@ -3905,7 +3919,7 @@ NV_STATUS uvm_api_get_device_color_info(UVM_GET_DEVICE_COLOR_INFO_PARAMS *params
     uvm_va_space_t *va_space = uvm_va_space_get(filp);
 //by jake {start}
     uvm_gpu_t *gpu = NULL;
-    uvm_parent_gpu_t *parent_gpu;
+    //uvm_gpu_t *gpu;
 //by jake {start}
 
     uvm_va_space_down_read(va_space);
@@ -3923,8 +3937,8 @@ NV_STATUS uvm_api_get_device_color_info(UVM_GET_DEVICE_COLOR_INFO_PARAMS *params
         }
 
 //by jake {start}
-        //if (!uvm_gpu_supports_coloring(gpu)) {
-        if (!uvm_gpu_supports_coloring(parent_gpu)) {
+        if (!uvm_gpu_supports_coloring(gpu)) {
+        //if (!uvm_gpu_supports_coloring(parent_gpu)) {
 //by jake {end}
             status = NV_ERR_NOT_SUPPORTED;
             goto done;
@@ -3945,7 +3959,8 @@ NV_STATUS uvm_api_get_process_color_info(UVM_GET_PROCESS_COLOR_INFO_PARAMS *para
     uvm_va_space_t *va_space = uvm_va_space_get(filp);
 //by jake {start}
     uvm_gpu_t *gpu = NULL;
-    uvm_parent_gpu_t *parent_gpu;
+    //uvm_gpu_t *gpu;
+    //uvm_parent_gpu_t *parent_gpu;
 //by jake {start}
 
     uvm_va_space_down_read(va_space);
@@ -3958,8 +3973,8 @@ NV_STATUS uvm_api_get_process_color_info(UVM_GET_PROCESS_COLOR_INFO_PARAMS *para
     else {
         gpu = uvm_va_space_get_gpu_by_uuid_with_gpu_va_space(va_space, &params->destinationUuid);
 //by jake {start}
-        //if (!gpu) {
-        if (!parent_gpu) {
+        if (!gpu) {
+        //if (!parent_gpu) {
 //by jake {end}
             status = NV_ERR_INVALID_DEVICE;
             goto done;
@@ -3967,7 +3982,7 @@ NV_STATUS uvm_api_get_process_color_info(UVM_GET_PROCESS_COLOR_INFO_PARAMS *para
 
 //by jake {start}
         //if (!uvm_gpu_supports_coloring(gpu)) {
-        if (!uvm_gpu_supports_coloring(parent_gpu)) {
+        if (!uvm_gpu_supports_coloring(gpu)) {
 //by jake {end}
             status = NV_ERR_NOT_SUPPORTED;
             goto done;
@@ -3991,7 +4006,8 @@ NV_STATUS uvm_api_set_process_color_info(UVM_SET_PROCESS_COLOR_INFO_PARAMS *para
     NvU32 num_colors;
 //by jake {start}
     uvm_gpu_t *gpu = NULL;
-    uvm_parent_gpu_t *parent_gpu;
+    //uvm_gpu_t *gpu;
+    //uvm_parent_gpu_t *parent_gpu;
 //by jake {start}
     NvU64 maxLength;
 
@@ -4005,16 +4021,16 @@ NV_STATUS uvm_api_set_process_color_info(UVM_SET_PROCESS_COLOR_INFO_PARAMS *para
     else {
         gpu = uvm_va_space_get_gpu_by_uuid_with_gpu_va_space(va_space, &params->destinationUuid);
 //by jake {start}
-        //if (!gpu) {
-        if (!parent_gpu) {
+        if (!gpu) {
+        //if (!parent_gpu) {
 //by jake {end}
             status = NV_ERR_INVALID_DEVICE;
             goto done;
         }
 
 //by jake {start}
-        //if (!uvm_gpu_supports_coloring(gpu)) {
-        if (!uvm_gpu_supports_coloring(parent_gpu)) {
+        if (!uvm_gpu_supports_coloring(gpu)) {
+        //if (!uvm_gpu_supports_coloring(parent_gpu)) {
 //by jake {end}
             status = NV_ERR_NOT_SUPPORTED;
             goto done;
@@ -4028,10 +4044,10 @@ NV_STATUS uvm_api_set_process_color_info(UVM_SET_PROCESS_COLOR_INFO_PARAMS *para
 
         // Roundup
 //by jake {start}
-        //params->length = (params->length + gpu->colored_allocation_chunk_size - 1) & 
-        params->length = (params->length + parent_gpu->colored_allocation_chunk_size - 1) & 
+        params->length = (params->length + gpu->parent->colored_allocation_chunk_size - 1) & 
+        //params->length = (params->length + parent_gpu->colored_allocation_chunk_size - 1) & 
             //(~(gpu->colored_allocation_chunk_size  - 1));
-            (~(parent_gpu->colored_allocation_chunk_size  - 1));
+            (~(gpu->parent->colored_allocation_chunk_size  - 1));
 //by jake {end}
 
         if (params->length > maxLength || params->length == 0) {
@@ -4156,8 +4172,8 @@ we must modify below chunk_size code
         if (status != NV_OK)
             goto cleanup;
 //by jake {start}
-        //if (gpu_supports_pma_eviction(gpu)) {
-        if (gpu_supports_pma_eviction(parent_gpu)) {
+        if (gpu_supports_pma_eviction(gpu)) {
+        //if (gpu_supports_pma_eviction(parent_gpu)) {
 //by jake {end}
             status = nvUvmInterfacePmaRegisterEvictionCallbacks(pmm->pma,
                                                                 uvm_pmm_gpu_pma_evict_pages_wrapper_entry,
@@ -4169,7 +4185,7 @@ we must modify below chunk_size code
     }
 
 //fgpu20 {start}
-    if (uvm_gpu_supports_coloring(parent_gpu)) {
+    if (uvm_gpu_supports_coloring(gpu)) {
         // Upfront reservation of all the color memory
         status = reserve_color_memory(parent_gpu, pmm);
         if (status != NV_OK)
@@ -4206,7 +4222,7 @@ static void release_free_root_chunks(uvm_pmm_gpu_t *pmm)
 
 void uvm_pmm_gpu_deinit(uvm_pmm_gpu_t *pmm)
 {
-    uvm_gpu_t *gpu;
+    uvm_gpu_t *gpu = uvm_pmm_to_gpu(pmm);
     size_t i, j, k;
 
 //by jake {start}
@@ -4218,7 +4234,7 @@ void uvm_pmm_gpu_deinit(uvm_pmm_gpu_t *pmm)
 
 //fgpu20 {start}
     //if (uvm_gpu_supports_coloring(pmm->gpu))
-    if (uvm_gpu_supports_coloring(parent_gpu))
+    if (uvm_gpu_supports_coloring(gpu))
         free_reserved_color_memory(parent_gpu, pmm);
 //fgpu20 {end}
 
@@ -4226,8 +4242,8 @@ void uvm_pmm_gpu_deinit(uvm_pmm_gpu_t *pmm)
 
     gpu = uvm_pmm_to_gpu(pmm);
 //by jake {start}
-    //if (gpu->mem_info.size != 0 && gpu_supports_pma_eviction(gpu))
-    if (gpu->mem_info.size != 0 && gpu_supports_pma_eviction(parent_gpu))
+    if (gpu->mem_info.size != 0 && gpu_supports_pma_eviction(gpu))
+    //if (gpu->mem_info.size != 0 && gpu_supports_pma_eviction(parent_gpu))
 //by jake {end}
         nvUvmInterfacePmaUnregisterEvictionCallbacks(pmm->pma);
 
@@ -4288,8 +4304,8 @@ NV_STATUS uvm_test_evict_chunk(UVM_TEST_EVICT_CHUNK_PARAMS *params, struct file 
 
     gpu = uvm_va_space_get_gpu_by_uuid(va_space, &params->gpu_uuid);
 //by jake {start}
-    //if (!gpu || !uvm_gpu_supports_eviction(gpu)) {
-    if (!gpu || !uvm_gpu_supports_eviction(parent_gpu)) {
+    if (!gpu || !uvm_gpu_supports_eviction(gpu)) {
+    //if (!gpu || !uvm_gpu_supports_eviction(parent_gpu)) {
 //by jake {end}
         uvm_va_space_up_read(va_space);
         return NV_ERR_INVALID_DEVICE;

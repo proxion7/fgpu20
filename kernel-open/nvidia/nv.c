@@ -758,7 +758,6 @@ nv_assert_not_in_gpu_exclusion_list(
     }
 
     os_free_mem(uuid);
-
     return;
 }
 
@@ -1182,6 +1181,7 @@ nv_schedule_uvm_isr(nv_state_t *nv)
 static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
 {
     nv_linux_state_t *nvl = NV_GET_NVL_FROM_NV_STATE(nv);
+
 #if defined(NV_LINUX_PCIE_MSI_SUPPORTED)
     NvU32 msi_config = 0;
 #endif
@@ -1196,6 +1196,7 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
     }
 
     rc = validate_numa_start_state(nvl);
+
     if (rc != 0)
     {
         goto failed;
@@ -1228,6 +1229,7 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
     }
 
     rc = nv_init_ibmnpu_devices(nv);
+
     if (rc != 0)
     {
         nv_printf(NV_DBG_ERRORS,
@@ -1239,7 +1241,8 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
     if (!(nv->flags & NV_FLAG_PERSISTENT_SW_STATE))
     {
         rc = nv_dev_alloc_stacks(nvl);
-        if (rc != 0)
+
+	if (rc != 0)
             goto failed;
     }
 
@@ -1293,6 +1296,7 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
         else
         {
             rc = nv_request_msix_irq(nvl);
+
         }
 #endif
     }
@@ -1314,31 +1318,33 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
     if (!(nv->flags & NV_FLAG_PERSISTENT_SW_STATE))
     {
         rc = os_alloc_mutex(&nvl->isr_bh_unlocked_mutex);
-        if (rc != 0)
+
+	if (rc != 0)
             goto failed;
         nv_kthread_q_item_init(&nvl->bottom_half_q_item, nvidia_isr_bh_unlocked, (void *)nv);
         rc = nv_kthread_q_init(&nvl->bottom_half_q, nv_device_name);
-        if (rc != 0)
+
+	if (rc != 0)
             goto failed;
         kthread_init = NV_TRUE;
 
         rc = nv_kthread_q_init(&nvl->queue.nvk, "nv_queue");
-        if (rc)
+
+	if (rc)
             goto failed;
         nv->queue = &nvl->queue;
     }
 
     if (!rm_init_adapter(sp, nv))
     {
+        printk("sp : %p, nv : %p\n", sp, nv);
         if (!(nv->flags & NV_FLAG_USES_MSIX) &&
             !(nv->flags & NV_FLAG_SOC_DISPLAY))
         {
             free_irq(nv->interrupt_line, (void *) nvl);
-        }
+	}
         else if (nv->flags & NV_FLAG_SOC_DISPLAY)
         {
-
-
 
         }
 #if defined(NV_LINUX_PCIE_MSI_SUPPORTED)
@@ -1385,6 +1391,7 @@ static int nv_start_device(nv_state_t *nv, nvidia_stack_t *sp)
 
 failed:
 #if defined(NV_LINUX_PCIE_MSI_SUPPORTED)
+
     if (nv->flags & NV_FLAG_USES_MSI)
     {
         nv->flags &= ~NV_FLAG_USES_MSI;
@@ -1446,12 +1453,21 @@ static int nv_open_device(nv_state_t *nv, nvidia_stack_t *sp)
     int rc;
     NV_STATUS status;
 
+//by jake DEBUG {start}
+        //printk("nvidia_open call the nv_open_device(nv_state_t *nv, nvidia_stack_t *sp) \n");
+//by jake DEBUG {start}
+
     if (os_is_vgx_hyper())
     {
         /* fail open if GPU is being unbound */
         if (nv->flags & NV_FLAG_UNBIND_LOCK)
         {
-            NV_DEV_PRINTF(NV_DBG_ERRORS, nv,
+
+//by jake DEBUG {start}
+        printk("Do Not Fail, if (nv->flags & NV_FLAG_UNBIND_LOCK)\n");
+//by jake DEBUG {start}		
+    
+		NV_DEV_PRINTF(NV_DBG_ERRORS, nv,
                           "Open failed as GPU is locked for unbind operation\n");
             return -ENODEV;
         }
@@ -1464,13 +1480,13 @@ static int nv_open_device(nv_state_t *nv, nvidia_stack_t *sp)
     if (status == NV_ERR_GPU_IS_LOST)
     {
         NV_DEV_PRINTF(NV_DBG_INFO, nv, "Device in removal process\n");
-        return -ENODEV;
+
+//by jake DEBUG {start}
+        printk("FAILED : if (status == NV_ERR_GPU_IS_LOST)\n");
+//by jake DEBUG {start}
+
+	return -ENODEV;
     }
-
-
-
-
-
 
     if ( ! (nv->flags & NV_FLAG_OPEN))
     {
@@ -1481,7 +1497,12 @@ static int nv_open_device(nv_state_t *nv, nvidia_stack_t *sp)
                           "Minor device %u is referenced without being open!\n",
                           nvl->minor_num);
             WARN_ON(1);
-            return -EBUSY;
+
+//by jake DEBUG {start}
+        printk("FAILED : if (NV_ATOMIC_READ(nvl->usage_count) != 0)\n");
+//by jake DEBUG {start}
+
+	    return -EBUSY;
         }
 
         rc = nv_start_device(nv, sp);
@@ -1492,7 +1513,12 @@ static int nv_open_device(nv_state_t *nv, nvidia_stack_t *sp)
     {
         /* Do not increment the usage count of sequestered devices. */
         NV_DEV_PRINTF(NV_DBG_ERRORS, nv, "Device is currently unavailable\n");
-        return -EBUSY;
+
+//by jake DEBUG {start}
+        printk("FAILED : else if (rm_is_device_sequestered(sp, nv))\n");
+//by jake DEBUG {start}
+
+	return -EBUSY;
     }
 
     NV_ATOMIC_INC(nvl->usage_count);
@@ -1580,7 +1606,14 @@ nvidia_open(
     {
         rc = nvidia_ctl_open(inode, file);
         if (rc != 0)
+	{
+
+//by jake DEBUG {start}
+        printk("FAILED (nvidia_open) : if (rc != 0) (After rc = nvidia_ctl_open(inode, file);)\n");
+//by jake DEBUG {start}
+
             goto failed;
+	}
         return rc;
     }
 
@@ -1590,11 +1623,17 @@ nvidia_open(
 
     /* Takes nvl->ldata_lock */
     nvl = find_minor(NV_DEVICE_MINOR_NUMBER(inode));
+
     if (!nvl)
     {
         rc = -ENODEV;
         up_read(&nv_system_pm_lock);
-        goto failed;
+
+//by jake DEBUG {start}
+        printk("FAILED (nvidia_open) : if (!nvl)\n");
+//by jake DEBUG {start}
+
+	goto failed;
     }
 
     nvlfp->nvptr = nvl;
@@ -1602,14 +1641,19 @@ nvidia_open(
 
     if ((nv->flags & NV_FLAG_EXCLUDE) != 0)
     {
-        char *uuid = rm_get_gpu_uuid(sp, nv);
+	    char *uuid = rm_get_gpu_uuid(sp, nv);
         NV_DEV_PRINTF(NV_DBG_ERRORS, nv,
                       "open() not permitted for excluded %s\n",
                       (uuid != NULL) ? uuid : "GPU");
         if (uuid != NULL)
             os_free_mem(uuid);
         rc = -EPERM;
-        goto failed1;
+
+//by jake DEBUG {start}
+        printk("FAILED (nvidia_open) : if ((nv->flags & NV_FLAG_EXCLUDE) != 0)\n");
+//by jake DEBUG {start}	
+
+	goto failed1;
     }
 
     rc = nv_open_device(nv, sp);
@@ -1619,13 +1663,22 @@ nvidia_open(
 
 failed1:
     up(&nvl->ldata_lock);
-
     up_read(&nv_system_pm_lock);
 failed:
     if (rc != 0)
     {
+
+//by jake DEBUG {start}
+        printk("FAILED (nvidia_open) : if (rc != 0) (After failed:)\n");
+//by jake DEBUG {start} 	    
+
         if (nvlfp != NULL)
         {
+
+//by jake DEBUG {start}
+        printk("FAILED (nvidia_open) : if (nvlfp != NULL)\n");
+//by jake DEBUG {start} 
+
             nv_kmem_cache_free_stack(sp);
             for (i = 0; i < NV_FOPS_STACK_INDEX_COUNT; ++i)
             {
@@ -1637,9 +1690,16 @@ failed:
     }
     else
     {
+
+//by jake DEBUG {start}
+        //printk("SUCCESS (nvidia_open) : else (if (rc != 0))\n");
+//by jake DEBUG {start}
+
         nv_init_mapping_revocation(nvl, file, nvlfp, inode);
     }
-
+//by jake DEBUG {start}
+	//printk("return value of nvidia_open is rc (normal rc value is 0), rc : %d \n", rc);
+//by jake DEBUG {start}
     return rc;
 }
 

@@ -211,6 +211,7 @@ static NV_STATUS chunk_alloc_check(uvm_pmm_gpu_t *pmm,
         return NV_ERR_NO_MEMORY;
 
     status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker);
+
     if (status != NV_OK)
         return status;
 
@@ -229,6 +230,7 @@ static NV_STATUS chunk_alloc_user_check(uvm_pmm_gpu_t *pmm,
     uvm_tracker_t local_tracker = UVM_TRACKER_INIT();
 
     status = uvm_pmm_gpu_alloc(pmm, num_chunks, chunk_size, mem_type, flags, /*fgpu20 {start}*/UVM_PMM_INVALID_TGID,/*fgpu20 {end}*/ chunks, &local_tracker);
+
     if (status != NV_OK)
         return status;
 

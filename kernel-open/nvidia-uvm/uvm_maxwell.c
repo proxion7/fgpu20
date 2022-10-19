@@ -27,6 +27,9 @@
 
 void uvm_hal_maxwell_arch_init_properties(uvm_parent_gpu_t *parent_gpu)
 {
+
+	uvm_gpu_t *gpu;
+
     parent_gpu->tlb_batch.va_invalidate_supported = false;
 
     // 128 GB should be enough for all current RM allocations and leaves enough

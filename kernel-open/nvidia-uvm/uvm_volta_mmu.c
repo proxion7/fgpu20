@@ -275,12 +275,12 @@ uvm_mmu_mode_hal_t *uvm_hal_mmu_mode_volta(NvU32 big_page_size)
 }
 
 //fgpu20 {start}
-static NvU32 uvm_hal_volta_mmu_phys_addr_to_true_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
+static NvU32 uvm_hal_volta_mmu_phys_addr_to_true_color(uvm_gpu_t *gpu, NvU64 phys_addr)
 {
     NvU32 color;
     bool bit0;
 
-    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
+    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
 
     //Cache Vertically Split
     //bit0 = ((phys_addr >> 12) ^ (phys_addr >> 15) ^ (phys_addr >> 16) ^ 
@@ -292,30 +292,32 @@ static NvU32 uvm_hal_volta_mmu_phys_addr_to_true_color(uvm_parent_gpu_t *parent_
     color = bit0;
 
     // Transfer color represent the true number of total colors
-    UVM_ASSERT(color < parent_gpu->num_transfer_mem_colors);
+    UVM_ASSERT(color < gpu->parent->num_transfer_mem_colors);
 
     return color;
 }
 
 NvU32 uvm_hal_volta_mmu_phys_addr_to_allocation_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
+    uvm_gpu_t *gpu;
+    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
 
-    if (parent_gpu->num_allocation_mem_colors == 1)
+    if (gpu->parent->num_allocation_mem_colors == 1)
         return 0;
 
-    return uvm_hal_volta_mmu_phys_addr_to_true_color(parent_gpu, phys_addr);
+    return uvm_hal_volta_mmu_phys_addr_to_true_color(gpu, phys_addr);
 }
 
 
 NvU32 uvm_hal_volta_mmu_phys_addr_to_transfer_color(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
+    uvm_gpu_t *gpu;
+    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
 
-    if (parent_gpu->num_transfer_mem_colors == 1)
+    if (gpu->parent->num_transfer_mem_colors == 1)
         return 0;
 
-    return uvm_hal_volta_mmu_phys_addr_to_true_color(parent_gpu, phys_addr);
+    return uvm_hal_volta_mmu_phys_addr_to_true_color(gpu, phys_addr);
 }
 
 
@@ -323,26 +325,28 @@ NvU32 uvm_hal_volta_mmu_phys_addr_to_transfer_color(uvm_parent_gpu_t *parent_gpu
 // same page index
 NvU64 uvm_hal_volta_mmu_phys_addr_to_base_transfer_color_addr(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
+    uvm_gpu_t *gpu = gpu;
+    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
 
     // Number of transfer colors must be power of 2
-    UVM_ASSERT(1 << order_base_2(parent_gpu->num_transfer_mem_colors) == parent_gpu->num_transfer_mem_colors);
+    UVM_ASSERT(1 << order_base_2(gpu->parent->num_transfer_mem_colors) == gpu->parent->num_transfer_mem_colors);
 
-    if (parent_gpu->num_transfer_mem_colors == 1)
+    if (gpu->parent->num_transfer_mem_colors == 1)
         return phys_addr;
 
-    return phys_addr & ~((1UL << (order_base_2(parent_gpu->colored_transfer_chunk_size * parent_gpu->num_transfer_mem_colors))) - 1);
+    return phys_addr & ~((1UL << (order_base_2(gpu->parent->colored_transfer_chunk_size * gpu->parent->num_transfer_mem_colors))) - 1);
 }
 
 NvU64 uvm_hal_volta_mmu_phys_addr_to_transfer_color_idx(uvm_parent_gpu_t *parent_gpu, NvU64 phys_addr)
 {
-    UVM_ASSERT(uvm_gpu_supports_coloring(parent_gpu));
+    uvm_gpu_t *gpu = gpu;
+    UVM_ASSERT(uvm_gpu_supports_coloring(gpu));
 
     // Number of transfer colors must be power of 2
-    UVM_ASSERT(1 << order_base_2(parent_gpu->num_transfer_mem_colors) == parent_gpu->num_transfer_mem_colors);
+    UVM_ASSERT(1 << order_base_2(gpu->parent->num_transfer_mem_colors) == gpu->parent->num_transfer_mem_colors);
 
     return uvm_hal_volta_mmu_phys_addr_to_base_transfer_color_addr(parent_gpu, phys_addr) >> 
-        (order_base_2(parent_gpu->colored_transfer_chunk_size * parent_gpu->num_transfer_mem_colors));
+        (order_base_2(gpu->parent->colored_transfer_chunk_size * gpu->parent->num_transfer_mem_colors));
 }
 //fgpu20 {end}
 

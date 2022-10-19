@@ -1378,29 +1378,30 @@ bool uvm_gpu_can_address(uvm_gpu_t *gpu, NvU64 addr, NvU64 size);
 NvU64 uvm_parent_gpu_canonical_address(uvm_parent_gpu_t *parent_gpu, NvU64 addr);
 
 //fgpu20 {start}
-static bool uvm_gpu_supports_coloring(uvm_parent_gpu_t *parent_gpu)
+static bool uvm_gpu_supports_coloring(uvm_gpu_t *gpu)
 {
     // If coloring is not supported, both types of colors should be zero.
-    UVM_ASSERT((parent_gpu->num_allocation_mem_colors == 0) ==
-        (parent_gpu->num_transfer_mem_colors == 0));
+    UVM_ASSERT((gpu->parent->num_allocation_mem_colors == 0) ==
+        (gpu->parent->num_transfer_mem_colors == 0));
 
-    if (parent_gpu->num_allocation_mem_colors == 0)
+    if (gpu->parent->num_allocation_mem_colors == 0)
         return false;
     return true;
 }
 //fgpu20 {end}
 
-static bool uvm_gpu_supports_eviction(uvm_parent_gpu_t *parent_gpu)
+static bool uvm_gpu_supports_eviction(uvm_gpu_t *gpu)
+//static bool uvm_gpu_supports_eviction(uvm_parent_gpu_t *parent_gpu)
 {
-
 //fgpu20 {start}
     // XXX: Restricting eviction for now as it is not working correctly.
-    if (uvm_gpu_supports_coloring(parent_gpu))
+    if (uvm_gpu_supports_coloring(gpu))
         return false;
 //fgpu20 {end}
 
     // Eviction is supported only if the GPU supports replayable faults
-    return parent_gpu->replayable_faults_supported;
+    return gpu->parent->replayable_faults_supported;
+    //return parent_gpu->replayable_faults_supported;
 }
 
 static bool uvm_gpu_is_virt_mode_sriov_heavy(const uvm_gpu_t *gpu)

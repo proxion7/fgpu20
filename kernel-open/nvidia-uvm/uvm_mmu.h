@@ -518,7 +518,7 @@ NV_STATUS uvm_page_table_range_vec_write_ptes(uvm_page_table_range_vec_t *range_
 NV_STATUS uvm_page_table_range_vec_clear_ptes(uvm_page_table_range_vec_t *range_vec, uvm_membar_t tlb_membar);
 
 //fgpu20 {start}
-uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_parent_gpu_t *gpu);
+uvm_chunk_sizes_mask_t uvm_mmu_all_user_chunk_sizes(uvm_parent_gpu_t *parent_gpu);
 
 // Returns a bitmap of allocation sizes for user memory supported by a GPU.
 // (except those not supported by colored pages when coloring is enabled)
